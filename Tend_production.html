@@ -4,8 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tend</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#4a6f40">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tend">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d4e8c4'/%3E%3Cpath d='M16 26 C16 26 9 20 9 13 A7 7 0 0 1 23 13 C23 20 16 26 16 26Z' fill='%234a6f40'/%3E%3Cline x1='16' y1='26' x2='16' y2='14' stroke='%234a6f40' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='16' y1='20' x2='12' y2='17' stroke='%234a6f40' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='22' x2='20' y2='19' stroke='%234a6f40' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
