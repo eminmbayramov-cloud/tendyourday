@@ -253,6 +253,18 @@ body.auth-gate #momCanvas{display:none}
 .auth-submit:disabled{opacity:.45;cursor:default;pointer-events:none}
 .auth-err{font-size:11px;color:#c0473a;margin-bottom:8px;min-height:16px;line-height:1.4}
 .auth-msg{font-size:11px;color:var(--e-tx);margin-top:8px;min-height:16px;text-align:center;line-height:1.5}
+/* ── SIDE PANEL ── */
+.side-panel{width:40px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;transition:width .22s cubic-bezier(.4,0,.2,1)}
+.side-panel.open{width:192px}
+.side-toggle{width:40px;height:40px;border:none;background:none;cursor:pointer;color:var(--fnt);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;transition:color .15s;align-self:flex-start}
+.side-toggle:hover{color:var(--vine)}
+.side-body{padding:4px 14px 14px;min-width:152px;opacity:0;transition:opacity .18s;pointer-events:none}
+.side-panel.open .side-body{opacity:1;pointer-events:auto}
+.side-name{font-size:15px;font-weight:600;color:var(--vine);letter-spacing:-.3px;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-divider{height:1px;background:var(--bdr);margin:0 0 12px}
+.side-sect-title{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.9px;color:var(--fnt);margin-bottom:6px}
+.side-action{width:100%;padding:7px 10px;background:none;border:1px solid var(--bdr);border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:500;color:var(--mut);cursor:pointer;text-align:left;transition:border-color .15s,color .15s,background .15s;white-space:nowrap}
+.side-action.danger:hover{border-color:#c0473a;color:#c0473a;background:#fdf0ee}
 </style>
 </head>
 <body class="auth-gate">
@@ -279,7 +291,6 @@ body.auth-gate #momCanvas{display:none}
     <button class="wk-arr" id="wkNext">&#8594;</button>
   </div>
   <div class="hr">
-    <span id="authUserEmail" style="font-size:11px;color:var(--mut);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></span>
     <button class="btn bg" id="paceBtn">Week Pace</button>
     <button class="btn bd" id="addBtn">+ Tend</button>
     <button class="btn bg" id="signOutBtn" style="color:var(--fnt);display:none">Sign out</button>
@@ -287,6 +298,18 @@ body.auth-gate #momCanvas{display:none}
 </header>
 
 <div class="layout">
+  <!-- SIDE PANEL -->
+  <aside class="side-panel" id="sidePanel">
+    <button class="side-toggle" id="sideToggle" title="Profile &amp; Settings">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.7" stroke="currentColor" stroke-width="1.4"/><path d="M2 14.5c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <div class="side-body">
+      <div class="side-name" id="sideUserName"></div>
+      <div class="side-divider"></div>
+      <div class="side-sect-title">Settings</div>
+      <button class="side-action danger" id="resetProgressBtn">Reset Progress</button>
+    </div>
+  </aside>
   <!-- LEFT: HISTORY VINE -->
   <aside class="hist-panel">
     <div class="hist-title">Growth history</div>
@@ -332,6 +355,7 @@ body.auth-gate #momCanvas{display:none}
       <button class="auth-tab" id="authTabSignup">Sign up</button>
     </div>
     <div class="auth-err" id="authErr"></div>
+    <input class="auth-field" type="text" id="authFirstName" placeholder="First name" autocomplete="given-name" style="display:none"/>
     <input class="auth-field" type="email" id="authEmail" placeholder="Email address" autocomplete="email"/>
     <input class="auth-field" type="password" id="authPassword" placeholder="Password" autocomplete="current-password"/>
     <input class="auth-field" type="password" id="authConfirm" placeholder="Confirm password" autocomplete="new-password" style="display:none"/>
@@ -407,6 +431,18 @@ body.auth-gate #momCanvas{display:none}
     <div class="mbb" style="margin-top:8px">
       <button class="mcan" id="blAdd">Add</button>
       <button class="mok" id="blDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET PROGRESS CONFIRM -->
+<div class="ov" id="resetMod" style="display:none">
+  <div class="mod">
+    <h2>Reset Progress</h2>
+    <p>This will permanently delete all your tasks, completions, and momentum. This cannot be undone. Are you sure?</p>
+    <div class="mbb">
+      <button class="mcan" id="resetCancel">Cancel</button>
+      <button class="mok" id="resetConfirm" style="background:#c0473a">Delete Everything</button>
     </div>
   </div>
 </div>
@@ -1621,8 +1657,8 @@ function showApp(session){
   document.body.classList.remove('auth-gate');
   var as=document.getElementById('authScreen'); if(as) as.style.display='none';
   var sb=document.getElementById('signOutBtn'); if(sb) sb.style.display='';
-  var ue=document.getElementById('authUserEmail');
-  if(ue&&session&&session.user&&session.user.email){ ue.textContent=session.user.email; ue.style.display=''; }
+  var firstName=(session&&session.user&&session.user.user_metadata&&session.user.user_metadata.first_name)||'';
+  var sn=document.getElementById('sideUserName'); if(sn) sn.textContent=firstName;
   bootApp();
 }
 
@@ -1631,6 +1667,7 @@ function showApp(session){
   var isLogin=true;
   var tabLogin=document.getElementById('authTabLogin');
   var tabSignup=document.getElementById('authTabSignup');
+  var firstNameEl=document.getElementById('authFirstName');
   var emailEl=document.getElementById('authEmail');
   var passEl=document.getElementById('authPassword');
   var confEl=document.getElementById('authConfirm');
@@ -1644,6 +1681,7 @@ function showApp(session){
     tabSignup.className='auth-tab'+(login?'':' on');
     submitEl.textContent=login?'Sign in':'Create account';
     confEl.style.display=login?'none':'';
+    firstNameEl.style.display=login?'none':'';
     errEl.textContent=''; msgEl.textContent='';
     passEl.autocomplete=login?'current-password':'new-password';
   }
@@ -1664,7 +1702,8 @@ function showApp(session){
         showApp(r.data.session);
       });
     } else {
-      _supabase.auth.signUp({email:email,password:pass}).then(function(r){
+      var firstName=(firstNameEl.value||'').trim();
+      _supabase.auth.signUp({email:email,password:pass,options:{data:{first_name:firstName}}}).then(function(r){
         submitEl.disabled=false;
         if(r.error){ errEl.textContent=r.error.message; return; }
         if(r.data&&r.data.session){ showApp(r.data.session); }
@@ -1693,6 +1732,41 @@ function showApp(session){
     if((event==='SIGNED_IN'||event==='TOKEN_REFRESHED')&&session&&!_appBooted){
       showApp(session);
     }
+  });
+})();
+
+// ── Sidebar + Reset Progress ──
+(function(){
+  var panel=document.getElementById('sidePanel');
+  var toggleBtn=document.getElementById('sideToggle');
+  var personIcon='<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.7" stroke="currentColor" stroke-width="1.4"/><path d="M2 14.5c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var closeIcon='<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10 12l-4-4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  toggleBtn.addEventListener('click',function(){
+    var open=panel.classList.toggle('open');
+    toggleBtn.innerHTML=open?closeIcon:personIcon;
+    toggleBtn.title=open?'Close':'Profile & Settings';
+  });
+  var resetBtn=document.getElementById('resetProgressBtn');
+  var resetMod=document.getElementById('resetMod');
+  var resetCancel=document.getElementById('resetCancel');
+  var resetConfirm=document.getElementById('resetConfirm');
+  resetBtn.addEventListener('click',function(){ resetMod.style.display='flex'; });
+  resetCancel.addEventListener('click',function(){ resetMod.style.display='none'; });
+  resetMod.addEventListener('click',function(e){ if(e.target===resetMod) resetMod.style.display='none'; });
+  resetConfirm.addEventListener('click',function(){
+    resetConfirm.disabled=true; resetConfirm.textContent='Deleting…';
+    function afterDelete(){ localStorage.removeItem('tide_v9'); window.location.reload(); }
+    if(!_userId){ afterDelete(); return; }
+    var uid=_userId;
+    Promise.all([
+      _supabase.from('tasks').delete().eq('user_id',uid),
+      _supabase.from('backlog').delete().eq('user_id',uid),
+      _supabase.from('completions').delete().eq('user_id',uid),
+      _supabase.from('user_state').delete().eq('user_id',uid)
+    ]).then(afterDelete).catch(function(e){
+      console.error('[Tend:reset]',e);
+      resetConfirm.disabled=false; resetConfirm.textContent='Delete Everything';
+    });
   });
 })();
 
