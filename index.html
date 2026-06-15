@@ -278,6 +278,90 @@ body.auth-gate #momCanvas{display:none}
 .side-sect-title{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.9px;color:var(--fnt);margin-bottom:6px}
 .side-action{width:100%;padding:7px 10px;background:none;border:1px solid var(--bdr);border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:500;color:var(--mut);cursor:pointer;text-align:left;transition:border-color .15s,color .15s,background .15s;white-space:nowrap}
 .side-action.danger:hover{border-color:#c0473a;color:#c0473a;background:#fdf0ee}
+/* ── MOBILE ── */
+@media(max-width:767px){
+  header,.layout{display:none!important}
+  #vineCanvas,#momCanvas,#bgCanvas{display:none!important}
+  body.auth-gate #mobileView{display:none!important}
+  .toast{bottom:88px!important;transform:translateX(-50%)!important}
+  #mobileView{display:flex;flex-direction:column;position:fixed;inset:0;background:var(--bg);overflow:hidden}
+  #mobTopBar{height:56px;background:var(--vine);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;z-index:50}
+  .mob-logo{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:600;color:#fff;letter-spacing:-.3px}
+  #mobDayNav{display:flex;align-items:center}
+  .mob-nav-btn{background:none;border:none;color:rgba(255,255,255,.85);font-size:24px;font-weight:300;padding:6px 12px;cursor:pointer;border-radius:8px;line-height:1;font-family:var(--ff);-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center}
+  .mob-nav-btn:active{background:rgba(255,255,255,.15)}
+  #mobDayInfo{text-align:center;min-width:96px}
+  #mobDayName{font-size:10px;font-weight:600;color:rgba(255,255,255,.72);letter-spacing:.5px;line-height:1.1;text-transform:uppercase}
+  #mobDayDate{font-size:19px;font-weight:700;color:#fff;letter-spacing:-.5px;line-height:1.25}
+  #mobAccBtn{background:none;border:none;color:rgba(255,255,255,.85);padding:8px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+  #mobAccBtn:active{background:rgba(255,255,255,.15)}
+  #mobDayClip{flex:1;overflow:hidden;position:relative}
+  #mobSlide{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;padding-bottom:160px}
+  #mobSlide.mob-slide-left{animation:mbSlL .25s cubic-bezier(.4,0,.2,1) both}
+  #mobSlide.mob-slide-right{animation:mbSlR .25s cubic-bezier(.4,0,.2,1) both}
+  @keyframes mbSlL{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes mbSlR{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  #mobVineCanvas{display:block;width:100%;height:140px;flex-shrink:0}
+  #mobTaskList{padding:10px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+  .mob-sec-lbl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--fnt);padding:4px 0 1px}
+  .mob-empty{text-align:center;color:var(--fnt);font-size:12px;padding:32px 20px;line-height:1.6}
+  .mob-card{border-radius:11px;padding:11px 13px;border:1px solid;position:relative;user-select:none;touch-action:pan-y;transition:transform .12s,box-shadow .12s,opacity .12s}
+  .mob-card.easy{background:var(--e-bg);border-color:var(--e-bd)}
+  .mob-card.med{background:var(--m-bg);border-color:var(--m-bd)}
+  .mob-card.hard{background:var(--h-bg);border-color:var(--h-bd)}
+  .mob-card.done{background:var(--d-bg)!important;border-color:var(--d-bd)!important}
+  .mob-card-top{display:flex;align-items:flex-start;gap:9px}
+  .mob-chk{width:20px;height:20px;min-width:20px;border-radius:50%;border:1.5px solid var(--bdr);display:flex;align-items:center;justify-content:center;margin-top:1px;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s}
+  .mob-card.easy .mob-chk{border-color:var(--e-tx)}
+  .mob-card.med .mob-chk{border-color:var(--m-tx)}
+  .mob-card.hard .mob-chk{border-color:var(--h-tx)}
+  .mob-card.done .mob-chk{background:var(--d-tx);border-color:var(--d-tx)}
+  .mob-ct{flex:1;font-size:13.5px;line-height:1.4;color:var(--txt)}
+  .mob-card.done .mob-ct{color:var(--d-tx);text-decoration:line-through}
+  .mob-diff{font-size:10px;color:var(--mut);margin-top:2px;font-weight:500}
+  .mob-streak{display:flex;align-items:center;gap:5px;margin-top:3px}
+  .mob-str-cur{font-size:10.5px;font-weight:600;color:#2d6b1a}
+  .mob-str-sep,.mob-str-best{font-size:10px;color:var(--fnt)}
+  .mob-done-time{font-size:10px;color:var(--d-tx);font-weight:500;margin-top:2px}
+  .mob-opts{background:none;border:none;font-size:19px;color:var(--fnt);padding:2px 5px;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;flex-shrink:0;margin-top:-1px}
+  #mobAddBtn{position:fixed;right:18px;background:var(--vine);color:#fff;font-size:28px;font-weight:300;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:90;box-shadow:0 4px 18px rgba(74,111,64,.38);-webkit-tap-highlight-color:transparent;transition:transform .12s,box-shadow .12s;line-height:1}
+  #mobAddBtn:active{transform:scale(.9);box-shadow:0 2px 8px rgba(74,111,64,.25)}
+  #mobDrawer{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--bdr);border-radius:16px 16px 0 0;box-shadow:0 -2px 16px rgba(0,0,0,.07);z-index:80;display:flex;flex-direction:column;overflow:hidden}
+  #mobDrawerPull{padding:10px 16px 8px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+  #mobDrawerPip{width:32px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 8px}
+  #mobPeekRow{display:flex;align-items:center;gap:8px}
+  #mobPeekLabel{font-size:13px;font-weight:600;color:var(--txt)}
+  .mob-badge{background:var(--vine);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:100px;min-width:18px;text-align:center;display:inline-block}
+  #mobDrawerList{overflow-y:auto;flex:1;padding:4px 14px 24px;display:flex;flex-direction:column;gap:7px}
+  .mob-pend-card{border-radius:10px;padding:10px 13px;border:1px solid;display:flex;align-items:center;gap:10px;user-select:none;transition:transform .12s,box-shadow .12s,opacity .12s}
+  .mob-pend-card.easy{background:var(--e-bg);border-color:var(--e-bd)}
+  .mob-pend-card.med{background:var(--m-bg);border-color:var(--m-bd)}
+  .mob-pend-card.hard{background:var(--h-bg);border-color:var(--h-bd)}
+  .mob-pend-card.mob-lifting{transform:scale(1.03);box-shadow:0 8px 24px rgba(0,0,0,.14);opacity:.92}
+  .mob-pend-body{flex:1}
+  .mob-pend-title{font-size:13px;color:var(--txt);line-height:1.4}
+  .mob-pend-diff{font-size:10px;color:var(--mut);font-weight:500;margin-top:2px}
+  .mob-pend-grip{font-size:17px;color:var(--fnt);flex-shrink:0}
+  .mob-pend-empty{text-align:center;color:var(--fnt);font-size:11.5px;padding:16px 0}
+  .mob-ghost-card{box-shadow:0 10px 30px rgba(0,0,0,.22)!important}
+  #mobDropZone{position:fixed;inset:56px 0 72px;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;pointer-events:none;opacity:0;transition:opacity .2s}
+  .mob-drop-label{background:rgba(74,111,64,.12);border:2px dashed var(--vine);border-radius:14px;padding:12px 28px;color:var(--vine);font-size:13px;font-weight:600}
+  #mobAccPop{position:fixed;top:60px;right:12px;background:var(--surf);border:1px solid var(--bdr);border-radius:13px;box-shadow:0 8px 24px rgba(10,8,4,.14);z-index:200;padding:6px;min-width:178px}
+  .mob-acc-name{font-size:11px;color:var(--fnt);padding:6px 12px 4px;font-weight:500}
+  .mob-acc-btn{width:100%;padding:11px 12px;background:none;border:none;border-radius:8px;font-family:var(--ff);font-size:13px;color:var(--txt);cursor:pointer;text-align:left;display:block}
+  .mob-acc-btn:active{background:var(--surf2)}
+  .mob-acc-btn.danger{color:#c0473a}
+  .mob-acc-divider{height:1px;background:var(--bdr);margin:4px 0}
+  #mobSheet{position:fixed;inset:0;z-index:400}
+  .msb{position:absolute;inset:0;background:rgba(0,0,0,.25)}
+  .msp{position:absolute;bottom:0;left:0;right:0;background:var(--surf);border-radius:16px 16px 0 0;padding:14px 12px 36px;animation:msUp .22s cubic-bezier(.4,0,.2,1)}
+  @keyframes msUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .mst{font-size:12px;color:var(--fnt);text-align:center;padding:4px 0 14px;border-bottom:1px solid var(--bdr);margin-bottom:6px;font-weight:500}
+  .msi{width:100%;padding:14px 16px;background:none;border:none;font-family:var(--ff);font-size:15px;color:var(--txt);cursor:pointer;text-align:left;border-radius:10px;display:block}
+  .msi:active{background:var(--surf2)}
+  .msi.danger{color:#c0473a}
+  .msc{width:100%;padding:14px;background:var(--surf2);border:none;border-radius:10px;font-family:var(--ff);font-size:15px;font-weight:600;color:var(--txt);cursor:pointer;margin-top:8px}
+}
 </style>
 </head>
 <body class="auth-gate">
@@ -345,6 +429,67 @@ body.auth-gate #momCanvas{display:none}
       <button class="blm" id="blManage">Manage backlog &#8594;</button>
     </div>
   </aside>
+</div>
+
+<!-- MOBILE VIEW -->
+<div id="mobileView" style="display:none">
+  <div id="mobTopBar">
+    <div class="mob-logo">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+        <path d="M10 18 C10 18 4 13 4 8 A6 6 0 0 1 16 8 C16 13 10 18 10 18Z" fill="#fff"/>
+        <line x1="10" y1="18" x2="10" y2="10" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="10" y1="14" x2="7" y2="12" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="10" y1="16" x2="13" y2="14" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Tend
+    </div>
+    <div id="mobDayNav">
+      <button class="mob-nav-btn" id="mobPrev">&#8249;</button>
+      <div id="mobDayInfo">
+        <div id="mobDayName">TODAY</div>
+        <div id="mobDayDate"></div>
+      </div>
+      <button class="mob-nav-btn" id="mobNext">&#8250;</button>
+    </div>
+    <button id="mobAccBtn" aria-label="Account">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="5.5" r="2.7" stroke="#fff" stroke-width="1.4"/>
+        <path d="M2 14.5c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="mobDayClip">
+    <div id="mobSlide">
+      <canvas id="mobVineCanvas"></canvas>
+      <div id="mobTaskList"></div>
+    </div>
+  </div>
+
+  <button id="mobAddBtn">+</button>
+
+  <div id="mobDrawer">
+    <div id="mobDrawerPull">
+      <div id="mobDrawerPip"></div>
+      <div id="mobPeekRow">
+        <span id="mobPeekLabel">Pending</span>
+        <span id="mobPeekCount" class="mob-badge">0</span>
+      </div>
+    </div>
+    <div id="mobDrawerList"></div>
+  </div>
+
+  <div id="mobDropZone">
+    <div class="mob-drop-label">Drop to schedule</div>
+  </div>
+
+  <div id="mobAccPop" style="display:none">
+    <div class="mob-acc-name" id="mobAccName"></div>
+    <div class="mob-acc-divider"></div>
+    <button class="mob-acc-btn danger" id="mobAccReset">Reset Progress</button>
+    <div class="mob-acc-divider"></div>
+    <button class="mob-acc-btn" id="mobAccSignOut">Sign out</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -674,6 +819,7 @@ function render(){
   highlightChainCards();
   sizeMomentumCanvas();
   // day vine redraws in animation loop
+  if(typeof renderMobile==='function') renderMobile();
 }
 
 function renderHdr(){
@@ -1672,6 +1818,7 @@ function showApp(session){
   var sb=document.getElementById('signOutBtn'); if(sb) sb.style.display='';
   var firstName=(session&&session.user&&session.user.user_metadata&&session.user.user_metadata.first_name)||'';
   var sn=document.getElementById('sideUserName'); if(sn) sn.textContent=firstName;
+  if(typeof applyViewMode==='function') applyViewMode();
   bootApp();
 }
 
@@ -2634,9 +2781,13 @@ var lastFrameTime=0;
 function vineLoop(now){
   lastFrameTime=now;
   vineT+=0.008;
-  sizeMomentumCanvas();
-  drawMomentumPanel(momentumCanvas,S.momentum,now);
-  drawDayVine(vineT);
+  if(typeof isMobile==='function'&&isMobile()){
+    if(typeof drawMobVine==='function') drawMobVine();
+  } else {
+    sizeMomentumCanvas();
+    drawMomentumPanel(momentumCanvas,S.momentum,now);
+    drawDayVine(vineT);
+  }
   requestAnimationFrame(vineLoop);
 }
 requestAnimationFrame(vineLoop);
@@ -2644,7 +2795,480 @@ requestAnimationFrame(vineLoop);
 window.addEventListener('resize',function(){
   sizeMomentumCanvas();
   drawHistVine();
+  if(typeof applyViewMode==='function') applyViewMode();
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  MOBILE LAYOUT  (< 768 px)
+// ═══════════════════════════════════════════════════════════════
+
+var mobileDayOffset = 0;
+var mobDrawerOpen   = false;
+var mobDrawerH      = 72;
+var MOB_PEEK_H      = 72;
+var mobDragState    = null;
+var mobReorderState = null;
+var mobDrwDragY     = null;
+var mobInitDone     = false;
+
+function isMobile(){ return window.matchMedia('(max-width:767px)').matches; }
+
+function getMobDate(){
+  var d=new Date(TODAY); d.setDate(TODAY.getDate()+mobileDayOffset); return d;
+}
+function getMobISO(){ return toISO(getMobDate()); }
+function getMobLabel(){
+  if(mobileDayOffset===0) return 'Today';
+  if(mobileDayOffset===-1) return 'Yesterday';
+  if(mobileDayOffset===1) return 'Tomorrow';
+  return getMobDate().toLocaleDateString('en-US',{weekday:'long'});
+}
+
+// Show mobile view when appropriate
+function applyViewMode(){
+  var mob=isMobile();
+  var mv=document.getElementById('mobileView');
+  if(mv) mv.style.display=mob?'flex':'none';
+  if(mob&&!mobInitDone){ initMobile(); mobInitDone=true; }
+}
+
+// Master mobile render (called from render())
+function renderMobile(){
+  if(!isMobile()) return;
+  renderMobTopBar();
+  renderMobTasks();
+  renderMobDrawer();
+}
+
+// ── Top bar ──────────────────────────────────────────────────────
+function renderMobTopBar(){
+  var dn=document.getElementById('mobDayName');
+  var dd=document.getElementById('mobDayDate');
+  if(!dn||!dd) return;
+  dn.textContent=getMobLabel().toUpperCase();
+  var dt=getMobDate();
+  dd.textContent=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  var prev=document.getElementById('mobPrev');
+  var next=document.getElementById('mobNext');
+  if(prev) prev.style.opacity=mobileDayOffset>-60?'1':'0.3';
+  if(next) next.style.opacity=mobileDayOffset<14?'1':'0.3';
+}
+
+// ── Vine canvas ──────────────────────────────────────────────────
+function drawMobVine(){
+  if(!isMobile()) return;
+  var cv=document.getElementById('mobVineCanvas');
+  if(!cv||!cv.parentElement) return;
+  var W=cv.parentElement.clientWidth||window.innerWidth;
+  var H=140;
+  var dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){
+    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+    cv.style.width=W+'px'; cv.style.height=H+'px';
+  }
+  var ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  var iso=getMobISO();
+  var baselineY=H-22;
+  drawColumnVine(ctx,{left:0,top:0,width:W,height:H},{left:0,top:0},iso,vineT,10,baselineY,baselineY);
+}
+
+// ── Day task list ─────────────────────────────────────────────────
+function renderMobTasks(){
+  var list=document.getElementById('mobTaskList');
+  if(!list) return;
+  list.innerHTML='';
+  var iso=getMobISO();
+  var dt=getMobDate();
+  var isFuture=dt>TODAY;
+  var all=S.tasks.filter(function(t){ return t.day===iso&&!t.hidden; });
+  var active=all.filter(function(t){ return !t.done; });
+  var done=all.filter(function(t){ return t.done; });
+  // Pulse completions as virtual done entries
+  (S.completions||[]).filter(function(c){ return c.date===iso; }).forEach(function(c){
+    var pt=S.tasks.find(function(x){ return x.id===c.taskId; });
+    if(!pt) return;
+    var already=done.some(function(d){ return d.recType==='pulse'&&(d.pulseGroupId||d.id)===c.taskId; });
+    if(!already) done.push(Object.assign({},pt,{done:true,doneAt:c.doneAt||null,day:iso,_pulseComp:true}));
+  });
+  done.sort(function(a,b){ return new Date(a.doneAt||0)-new Date(b.doneAt||0); });
+  if(active.length){
+    var lbl=document.createElement('div'); lbl.className='mob-sec-lbl'; lbl.textContent='To do';
+    list.appendChild(lbl);
+    active.forEach(function(t){ list.appendChild(mkMobCard(t,false,isFuture)); });
+  }
+  if(!isFuture&&done.length){
+    var dlbl=document.createElement('div'); dlbl.className='mob-sec-lbl';
+    dlbl.textContent='Done · '+done.length; list.appendChild(dlbl);
+    done.forEach(function(t){ list.appendChild(mkMobCard(t,false,false)); });
+  }
+  if(!active.length&&!done.length){
+    var empty=document.createElement('div'); empty.className='mob-empty';
+    empty.textContent=isFuture?'— nothing planned yet —':'Nothing here · drag a task up from pending';
+    list.appendChild(empty);
+  }
+  if(active.length>1) setupMobReorder(list,iso);
+}
+
+function mkMobCard(task,isPending,isFuture){
+  var diff=nd(task.diff);
+  var el=document.createElement('div');
+  el.className='mob-card '+(task.done?'done':diff);
+  el.dataset.id=task.id;
+  var streakHtml='';
+  if(task.recType==='pulse'){
+    var pgid=task.pulseGroupId||task.id;
+    var cur=getPulseStreak(pgid), best=getPulseBestStreakAsOf(pgid,TODAY_ISO);
+    if(cur>0||best>0)
+      streakHtml='<div class="mob-streak"><span class="mob-str-cur">🔥 '+cur+' day'+(cur!==1?'s':'')+'</span>'+
+        '<span class="mob-str-sep">·</span><span class="mob-str-best">best '+best+'</span></div>';
+  }
+  var typeTag=task.recType==='pulse'?' ∞':task.recType==='echo'?' ∾':'';
+  var diffLabel=diff.charAt(0).toUpperCase()+diff.slice(1)+typeTag;
+  var doneTime=task.done&&task.doneAt?'<div class="mob-done-time">✓ '+ft(task.doneAt)+'</div>':'';
+  var isUndo=task.done||task._pulseComp;
+  var btn=isUndo?'<button class="mob-opts" title="Undo">↩</button>':
+                  '<button class="mob-opts" title="Options">⋯</button>';
+  el.innerHTML=
+    '<div class="mob-card-top">'+
+      '<div class="mob-chk"></div>'+
+      '<div class="mob-ct">'+esc(task.title)+
+        '<div class="mob-diff">'+diffLabel+'</div>'+streakHtml+doneTime+
+      '</div>'+btn+
+    '</div>';
+  var chk=el.querySelector('.mob-chk'), opts=el.querySelector('.mob-opts');
+  if(isUndo){
+    var onUndo=function(e){ e.stopPropagation(); undoTask(task.id,task._pulseComp?task.day:undefined); };
+    if(chk) chk.addEventListener('click',onUndo);
+    if(opts) opts.addEventListener('click',onUndo);
+  } else {
+    if(chk) chk.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(isFuture){ toast('Available on the day'); return; }
+      completeTask(task.id);
+    });
+    if(opts) opts.addEventListener('click',function(e){ e.stopPropagation(); showMobSheet(task); });
+  }
+  return el;
+}
+
+// ── Action sheet ─────────────────────────────────────────────────
+function showMobSheet(task){
+  closeMobSheet();
+  var s=document.createElement('div'); s.id='mobSheet';
+  s.innerHTML='<div class="msb"></div><div class="msp">'+
+    '<div class="mst">'+esc(task.title)+'</div>'+
+    '<button class="msi" id="msi-pend">↩ Return to pending</button>'+
+    '<button class="msi danger" id="msi-del">Delete task</button>'+
+    '<button class="msc" id="msi-cancel">Cancel</button></div>';
+  document.body.appendChild(s);
+  s.querySelector('.msb').addEventListener('click',closeMobSheet);
+  document.getElementById('msi-cancel').addEventListener('click',closeMobSheet);
+  document.getElementById('msi-pend').addEventListener('click',function(){ closeMobSheet(); returnToPending(task.id); });
+  document.getElementById('msi-del').addEventListener('click',function(){ closeMobSheet(); delTask(task.id); });
+}
+function closeMobSheet(){
+  var s=document.getElementById('mobSheet');
+  if(s&&s.parentNode) s.parentNode.removeChild(s);
+}
+
+// ── Drawer render ─────────────────────────────────────────────────
+function renderMobDrawer(){
+  var pnd=S.tasks.filter(function(t){ return !t.day&&!t.hidden&&!t.done; })
+    .sort(function(a,b){ return do2(a.diff)-do2(b.diff); });
+  var badge=document.getElementById('mobPeekCount');
+  if(badge) badge.textContent=pnd.length;
+  var list=document.getElementById('mobDrawerList');
+  if(!list) return;
+  list.innerHTML='';
+  if(!pnd.length){
+    var empty=document.createElement('div'); empty.className='mob-pend-empty';
+    empty.textContent='All clear — no pending tasks'; list.appendChild(empty); return;
+  }
+  pnd.forEach(function(t){ list.appendChild(mkMobPendCard(t)); });
+}
+
+function mkMobPendCard(task){
+  var diff=nd(task.diff);
+  var el=document.createElement('div');
+  el.className='mob-pend-card '+diff; el.dataset.id=task.id;
+  var typeTag=task.recType==='pulse'?' ∞':task.recType==='echo'?' ∾':'';
+  el.innerHTML=
+    '<div class="mob-pend-body">'+
+      '<div class="mob-pend-title">'+esc(task.title)+'</div>'+
+      '<div class="mob-pend-diff">'+diff.charAt(0).toUpperCase()+diff.slice(1)+typeTag+'</div>'+
+    '</div>'+
+    '<div class="mob-pend-grip">⠇</div>';
+  attachPendGestures(el,task);
+  return el;
+}
+
+// ── Pending card gestures (double-tap + hold-drag) ────────────────
+function attachPendGestures(el,task){
+  var lastTap=0, holdTimer=null, startX, startY;
+  el.addEventListener('touchstart',function(e){
+    var touch=e.touches[0];
+    startX=touch.clientX; startY=touch.clientY;
+    var now=Date.now();
+    if(now-lastTap<330){
+      e.preventDefault(); clearTimeout(holdTimer); holdTimer=null; lastTap=0;
+      movePendToDay(task); return;
+    }
+    lastTap=now;
+    holdTimer=setTimeout(function(){
+      holdTimer=null;
+      beginPendDrag(el,task,touch.clientX,touch.clientY);
+    },380);
+  },{passive:false});
+  el.addEventListener('touchmove',function(e){
+    if(!holdTimer) return;
+    if(Math.abs(e.touches[0].clientX-startX)>8||Math.abs(e.touches[0].clientY-startY)>8){
+      clearTimeout(holdTimer); holdTimer=null;
+    }
+  },{passive:true});
+  el.addEventListener('touchend',function(){ clearTimeout(holdTimer); holdTimer=null; });
+}
+
+function movePendToDay(task){
+  var iso=getMobISO();
+  if(task.recType==='pulse'){
+    var gid=task.pulseGroupId||task.id;
+    var exists=S.tasks.some(function(t){ return t.recType==='pulse'&&(t.pulseGroupId||t.id)===gid&&t.day===iso; });
+    if(!exists) S.tasks.push({id:uid(),title:task.title,diff:task.diff,recType:'pulse',
+      echoInterval:task.echoInterval||7,day:iso,done:false,doneAt:null,
+      pulseGroupId:gid,hidden:false,parts:null,partIndex:0,parentId:null,
+      currentStreak:task.currentStreak||0,longestStreak:task.longestStreak||0});
+  } else { task.day=iso; }
+  saveS(); render();
+  toast('Added to '+(mobileDayOffset===0?'today':getMobLabel()));
+}
+
+// ── Pending card drag-to-day ──────────────────────────────────────
+function beginPendDrag(el,task,clientX,clientY){
+  if(navigator.vibrate) navigator.vibrate(12);
+  el.classList.add('mob-lifting');
+  setMobDrawer(MOB_PEEK_H,true);
+  var ghost=document.createElement('div');
+  ghost.id='mobGhost';
+  ghost.className='mob-pend-card '+nd(task.diff)+' mob-ghost-card';
+  ghost.style.cssText='position:fixed;pointer-events:none;z-index:600;width:220px;transform:rotate(-2deg);'+
+    'left:'+(clientX-110)+'px;top:'+(clientY-30)+'px;border:1px solid;border-color:inherit;';
+  ghost.innerHTML='<div class="mob-pend-body"><div class="mob-pend-title">'+esc(task.title)+'</div></div>';
+  document.body.appendChild(ghost);
+  var dz=document.getElementById('mobDropZone');
+  if(dz) dz.style.opacity='1';
+  mobDragState={task:task,ghost:ghost,cardEl:el,startX:clientX,baseDay:mobileDayOffset,
+    threshold:Math.round(window.innerWidth*0.28)};
+  document.addEventListener('touchmove',onPendDragMove,{passive:false});
+  document.addEventListener('touchend',onPendDragEnd,{passive:true});
+}
+
+function onPendDragMove(e){
+  if(!mobDragState) return;
+  e.preventDefault();
+  var x=e.touches[0].clientX, y=e.touches[0].clientY;
+  var st=mobDragState;
+  st.ghost.style.left=(x-110)+'px'; st.ghost.style.top=(y-30)+'px';
+  var dayDelta=-Math.round((x-st.startX)/st.threshold);
+  var newDay=Math.max(-60,Math.min(14,st.baseDay+dayDelta));
+  if(newDay!==mobileDayOffset){
+    var dir=newDay>mobileDayOffset?'left':'right';
+    mobileDayOffset=newDay;
+    renderMobTopBar(); renderMobTasks(); animateMobSlide(dir);
+  }
+}
+
+function onPendDragEnd(){
+  if(!mobDragState) return;
+  document.removeEventListener('touchmove',onPendDragMove);
+  document.removeEventListener('touchend',onPendDragEnd);
+  var st=mobDragState; mobDragState=null;
+  movePendToDay(st.task);
+  if(st.ghost&&st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
+  if(st.cardEl) st.cardEl.classList.remove('mob-lifting');
+  var dz=document.getElementById('mobDropZone'); if(dz) dz.style.opacity='0';
+  setTimeout(function(){
+    setMobDrawer(Math.min(window.innerHeight*0.62,460),true);
+    mobDrawerOpen=true; renderMobDrawer();
+  },320);
+}
+
+// ── Hold-to-reorder in day list ──────────────────────────────────
+function setupMobReorder(listEl,dayISO){
+  listEl.querySelectorAll('.mob-card:not(.done)').forEach(function(card){
+    var holdTimer=null, startY;
+    card.addEventListener('touchstart',function(e){
+      startY=e.touches[0].clientY;
+      holdTimer=setTimeout(function(){
+        holdTimer=null;
+        beginReorder(card,listEl,e.touches[0].clientX,startY);
+      },400);
+    },{passive:true});
+    card.addEventListener('touchmove',function(e){
+      if(!holdTimer) return;
+      if(Math.abs(e.touches[0].clientY-startY)>10){ clearTimeout(holdTimer); holdTimer=null; }
+    },{passive:true});
+    card.addEventListener('touchend',function(){ clearTimeout(holdTimer); holdTimer=null; });
+  });
+}
+
+function beginReorder(card,listEl,startX,startY){
+  if(mobDragState) return;
+  if(navigator.vibrate) navigator.vibrate(12);
+  var rect=card.getBoundingClientRect();
+  var ghost=card.cloneNode(true);
+  ghost.id='mobRGhost';
+  ghost.style.cssText='position:fixed;pointer-events:none;z-index:600;width:'+rect.width+'px;'+
+    'left:'+rect.left+'px;top:'+rect.top+'px;opacity:.9;transition:none;';
+  document.body.appendChild(ghost);
+  card.style.opacity='.25';
+  mobReorderState={card:card,ghost:ghost,listEl:listEl,offsetY:startY-rect.top,insertBefore:null};
+  document.addEventListener('touchmove',onReorderMove,{passive:false});
+  document.addEventListener('touchend',onReorderEnd,{passive:true});
+}
+
+function onReorderMove(e){
+  if(!mobReorderState) return;
+  e.preventDefault();
+  var y=e.touches[0].clientY;
+  var st=mobReorderState;
+  st.ghost.style.top=(y-st.offsetY)+'px';
+  var cards=Array.from(st.listEl.querySelectorAll('.mob-card:not(.done)'));
+  var target=null;
+  cards.forEach(function(c){
+    if(c===st.card) return;
+    var r=c.getBoundingClientRect();
+    if(y<r.top+r.height*0.5&&!target) target=c;
+  });
+  cards.forEach(function(c){ c.style.transform=''; c.style.transition=''; });
+  if(target){ target.style.transition='transform .15s'; target.style.transform='translateY(54px)'; }
+  st.insertBefore=target;
+}
+
+function onReorderEnd(){
+  if(!mobReorderState) return;
+  document.removeEventListener('touchmove',onReorderMove);
+  document.removeEventListener('touchend',onReorderEnd);
+  var st=mobReorderState; mobReorderState=null;
+  if(st.ghost&&st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
+  st.card.style.opacity='';
+  st.listEl.querySelectorAll('.mob-card').forEach(function(c){ c.style.transform=''; c.style.transition=''; });
+  if(st.insertBefore&&st.insertBefore!==st.card){
+    var t1=S.tasks.find(function(t){ return t.id===st.card.dataset.id; });
+    var t2=S.tasks.find(function(t){ return t.id===st.insertBefore.dataset.id; });
+    if(t1&&t2){
+      S.tasks.splice(S.tasks.indexOf(t1),1);
+      S.tasks.splice(S.tasks.indexOf(t2),0,t1);
+      saveS(); render();
+    }
+  }
+}
+
+// ── Drawer helpers ────────────────────────────────────────────────
+function setMobDrawer(h,animated){
+  var drawer=document.getElementById('mobDrawer'); if(!drawer) return;
+  mobDrawerH=h;
+  drawer.style.transition=animated?'height .28s cubic-bezier(.4,0,.2,1)':'none';
+  drawer.style.height=h+'px';
+  var addBtn=document.getElementById('mobAddBtn');
+  if(addBtn) addBtn.style.bottom=(h+16)+'px';
+}
+
+// ── Slide animation ───────────────────────────────────────────────
+function animateMobSlide(dir){
+  var slide=document.getElementById('mobSlide'); if(!slide) return;
+  slide.classList.remove('mob-slide-left','mob-slide-right');
+  void slide.offsetWidth;
+  slide.classList.add(dir==='left'?'mob-slide-left':'mob-slide-right');
+  setTimeout(function(){ slide.classList.remove('mob-slide-left','mob-slide-right'); },300);
+}
+
+function navMobDay(dir){
+  mobileDayOffset+=dir;
+  renderMobTopBar(); renderMobTasks();
+  animateMobSlide(dir>0?'left':'right');
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+function initMobile(){
+  var prev=document.getElementById('mobPrev');
+  var next=document.getElementById('mobNext');
+  var addB=document.getElementById('mobAddBtn');
+  var pull=document.getElementById('mobDrawerPull');
+  var accB=document.getElementById('mobAccBtn');
+  var accR=document.getElementById('mobAccReset');
+  var accSO=document.getElementById('mobAccSignOut');
+  var pop=document.getElementById('mobAccPop');
+
+  if(prev) prev.addEventListener('click',function(){ navMobDay(-1); });
+  if(next) next.addEventListener('click',function(){ navMobDay(1); });
+
+  if(addB) addB.addEventListener('click',function(){
+    document.getElementById('addMod').style.display='flex';
+  });
+
+  // Drawer toggle on tap
+  if(pull){
+    pull.addEventListener('click',function(){
+      if(mobDragState) return;
+      mobDrawerOpen=!mobDrawerOpen;
+      setMobDrawer(mobDrawerOpen?Math.min(window.innerHeight*0.62,460):MOB_PEEK_H,true);
+    });
+    // Drawer drag gesture on handle
+    var drwTouchY=null, drwTouchH=null;
+    pull.addEventListener('touchstart',function(e){
+      if(mobDragState) return;
+      drwTouchY=e.touches[0].clientY; drwTouchH=mobDrawerH;
+    },{passive:true});
+    document.addEventListener('touchmove',function(e){
+      if(drwTouchY===null||mobDragState) return;
+      var dy=drwTouchY-e.touches[0].clientY;
+      var newH=Math.max(MOB_PEEK_H,Math.min(window.innerHeight*0.8,drwTouchH+dy));
+      setMobDrawer(newH,false);
+    },{passive:true});
+    document.addEventListener('touchend',function(){
+      if(drwTouchY===null) return;
+      drwTouchY=null;
+      if(mobDrawerH>window.innerHeight*0.22){
+        setMobDrawer(Math.min(window.innerHeight*0.62,460),true); mobDrawerOpen=true;
+      } else {
+        setMobDrawer(MOB_PEEK_H,true); mobDrawerOpen=false;
+      }
+    });
+  }
+
+  // Account popover
+  if(accB) accB.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(!pop) return;
+    var open=pop.style.display!=='none';
+    pop.style.display=open?'none':'block';
+    var nm=document.getElementById('mobAccName');
+    var sn=document.getElementById('sideUserName');
+    if(nm&&sn) nm.textContent=sn.textContent||'';
+  });
+  if(accR) accR.addEventListener('click',function(){
+    if(pop) pop.style.display='none';
+    document.getElementById('resetMod').style.display='flex';
+  });
+  if(accSO) accSO.addEventListener('click',function(){
+    if(pop) pop.style.display='none';
+    _supabase.auth.signOut().then(function(){ window.location.reload(); });
+  });
+  document.addEventListener('click',function(){
+    if(pop) pop.style.display='none';
+    closeMobSheet();
+  });
+
+  window.addEventListener('resize',function(){
+    if(!isMobile()) return;
+    if(mobDrawerOpen) setMobDrawer(Math.min(window.innerHeight*0.62,460),false);
+  });
+
+  setMobDrawer(MOB_PEEK_H,false);
+  renderMobTopBar(); renderMobTasks(); renderMobDrawer();
+}
 </script>
 </body>
 </html>
