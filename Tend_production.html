@@ -302,10 +302,10 @@ body.auth-gate #momCanvas{display:none}
   @keyframes mbSlL{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
   @keyframes mbSlR{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
   #mobVineCanvas{display:block;width:100%;height:140px;flex-shrink:0}
-  #mobTaskList{padding:10px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+  #mobTaskList{padding:8px 14px;display:flex;flex-direction:column;gap:5px;flex:1}
   .mob-sec-lbl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--fnt);padding:4px 0 1px}
   .mob-empty{text-align:center;color:var(--fnt);font-size:12px;padding:32px 20px;line-height:1.6}
-  .mob-card{border-radius:11px;padding:11px 13px;border:1px solid;position:relative;user-select:none;touch-action:pan-y;transition:transform .12s,box-shadow .12s,opacity .12s}
+  .mob-card{border-radius:10px;padding:9px 11px;border:1px solid;position:relative;user-select:none;touch-action:pan-y;transition:transform .12s,box-shadow .12s,opacity .12s}
   .mob-card.easy{background:var(--e-bg);border-color:var(--e-bd)}
   .mob-card.med{background:var(--m-bg);border-color:var(--m-bd)}
   .mob-card.hard{background:var(--h-bg);border-color:var(--h-bd)}
@@ -323,7 +323,9 @@ body.auth-gate #momCanvas{display:none}
   .mob-str-cur{font-size:10.5px;font-weight:600;color:#2d6b1a}
   .mob-str-sep,.mob-str-best{font-size:10px;color:var(--fnt)}
   .mob-done-time{font-size:10px;color:var(--d-tx);font-weight:500;margin-top:2px}
-  .mob-opts{background:none;border:none;font-size:19px;color:var(--fnt);padding:2px 5px;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;flex-shrink:0;margin-top:-1px}
+  .mob-opts{background:none;border:none;font-size:18px;color:var(--fnt);padding:2px 5px;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;flex-shrink:0;margin-top:-1px}
+  .mob-undo{font-size:14px;opacity:.45;margin-top:0}
+  .tb{-webkit-appearance:none;color:var(--txt)!important}
   #mobAddBtn{position:fixed;right:18px;background:var(--vine);color:#fff;font-size:28px;font-weight:300;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:90;box-shadow:0 4px 18px rgba(74,111,64,.38);-webkit-tap-highlight-color:transparent;transition:transform .12s,box-shadow .12s;line-height:1}
   #mobAddBtn:active{transform:scale(.9);box-shadow:0 2px 8px rgba(74,111,64,.25)}
   #mobDrawer{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--bdr);border-radius:16px 16px 0 0;box-shadow:0 -2px 16px rgba(0,0,0,.07);z-index:80;display:flex;flex-direction:column;overflow:hidden}
@@ -332,7 +334,7 @@ body.auth-gate #momCanvas{display:none}
   #mobPeekRow{display:flex;align-items:center;gap:8px}
   #mobPeekLabel{font-size:13px;font-weight:600;color:var(--txt)}
   .mob-badge{background:var(--vine);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:100px;min-width:18px;text-align:center;display:inline-block}
-  #mobDrawerList{overflow-y:auto;flex:1;padding:4px 14px 24px;display:flex;flex-direction:column;gap:7px}
+  #mobDrawerList{overflow-y:auto;flex:1;padding:4px 14px 24px;display:flex;flex-direction:column;gap:5px}
   .mob-pend-card{border-radius:10px;padding:10px 13px;border:1px solid;display:flex;align-items:center;gap:10px;user-select:none;transition:transform .12s,box-shadow .12s,opacity .12s}
   .mob-pend-card.easy{background:var(--e-bg);border-color:var(--e-bd)}
   .mob-pend-card.med{background:var(--m-bg);border-color:var(--m-bd)}
@@ -2921,18 +2923,20 @@ function mkMobCard(task,isPending,isFuture){
     var pgid=task.pulseGroupId||task.id;
     var cur=getPulseStreak(pgid), best=getPulseBestStreakAsOf(pgid,TODAY_ISO);
     if(cur>0||best>0)
-      streakHtml='<div class="mob-streak"><span class="mob-str-cur">🔥 '+cur+' day'+(cur!==1?'s':'')+'</span>'+
-        '<span class="mob-str-sep">·</span><span class="mob-str-best">best '+best+'</span></div>';
+      streakHtml='<div class="mob-streak"><span class="mob-str-cur">🔥 '+cur+'</span>'+
+        (best>cur?'<span class="mob-str-sep">·</span><span class="mob-str-best">'+best+'</span>':'')+
+        '</div>';
   }
   var typeTag=task.recType==='pulse'?' ∞':task.recType==='echo'?' ∾':'';
   var diffLabel=diff.charAt(0).toUpperCase()+diff.slice(1)+typeTag;
   var doneTime=task.done&&task.doneAt?'<div class="mob-done-time">✓ '+ft(task.doneAt)+'</div>':'';
   var isUndo=task.done||task._pulseComp;
-  var btn=isUndo?'<button class="mob-opts" title="Undo">↩</button>':
+  var chkSvg=isUndo?'<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
+  var btn=isUndo?'<button class="mob-opts mob-undo" title="Undo">↺</button>':
                   '<button class="mob-opts" title="Options">⋯</button>';
   el.innerHTML=
     '<div class="mob-card-top">'+
-      '<div class="mob-chk"></div>'+
+      '<div class="mob-chk">'+chkSvg+'</div>'+
       '<div class="mob-ct">'+esc(task.title)+
         '<div class="mob-diff">'+diffLabel+'</div>'+streakHtml+doneTime+
       '</div>'+btn+
@@ -3070,7 +3074,7 @@ function onPendDragMove(e){
   var x=e.touches[0].clientX, y=e.touches[0].clientY;
   var st=mobDragState;
   st.ghost.style.left=(x-110)+'px'; st.ghost.style.top=(y-30)+'px';
-  var dayDelta=-Math.round((x-st.startX)/st.threshold);
+  var dayDelta=Math.round((x-st.startX)/st.threshold);
   var newDay=Math.max(-60,Math.min(14,st.baseDay+dayDelta));
   if(newDay!==mobileDayOffset){
     var dir=newDay>mobileDayOffset?'left':'right';
