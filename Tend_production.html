@@ -713,12 +713,13 @@ function loadS(){
   S.tasks.forEach(function(t){ if(t.recType==='pulse'&&!t.pulseGroupId) t.pulseGroupId=t.id; });
 }
 var _sbSaveTimer=null;
+var hasUnsyncedChanges=false;
 function saveS(){
   try{
     localStorage.setItem('tide_v9', JSON.stringify(S));
     localStorage.setItem('tide_last_ts', Date.now());
   }catch(e){}
-  if(_userId){
+  if(_userId && hasUnsyncedChanges){
     if(_sbSaveTimer) clearTimeout(_sbSaveTimer);
     _sbSaveTimer=setTimeout(syncToSupabase,1500);
   }
@@ -1712,6 +1713,8 @@ function loadFromSupabase(uid){
 
 function syncToSupabase(){
   if(!_userId){ console.warn('[Tend:sync] no _userId'); return; }
+  if(!hasUnsyncedChanges){ console.log('[Tend:sync] skipping — no user changes since boot'); return; }
+  hasUnsyncedChanges=false;
   var uid=_userId;
 
   // Wrap each object as {id, user_id, data}
@@ -1798,6 +1801,7 @@ function runBoot(){
   repairBreakdowns(); runDecay();
   var thisStamp=TODAY_ISO;
   if(S._wkStamp!==thisStamp){ S._wkStamp=thisStamp; saveS(); setTimeout(function(){ openBusyModal(); },700); }
+  hasUnsyncedChanges=true;
   render();
 }
 
@@ -1807,9 +1811,12 @@ function bootApp(){
   loadFromSupabase(_userId)
     .then(function(d){
       if(!d.hasData){
-        // First login for this user — seed Supabase from any existing localStorage data
+        // First login for this user — seed Supabase only if localStorage has real data to migrate
         loadS();
-        syncToSupabase();
+        if((S.tasks||[]).length||(S.backlog||[]).length||((S.completions||[]).length)){
+          hasUnsyncedChanges=true;
+          syncToSupabase();
+        }
       } else {
         applySupabaseData(d);
       }
