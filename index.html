@@ -393,7 +393,7 @@ body.auth-gate #momCanvas{display:none}
   .mob-cal-day.cal-tap{cursor:pointer}
   .mob-cal-day.cal-tap:active{opacity:.5}
   .mob-cal-vinerow{width:100%;overflow:hidden}
-  .mob-cal-vinerow canvas{display:block;width:100%;height:44px}
+  .mob-cal-vinerow canvas{display:block;width:100%}
   .mob-cal-tip{text-align:center;font-size:11px;color:var(--fnt);padding:18px 0 12px;opacity:.6;letter-spacing:.3px}
 }
 </style>
@@ -3348,6 +3348,19 @@ function navMobDay(dir){
 // ── Calendar ─────────────────────────────────────────────────────
 var _calYear=0, _calMonth=0;
 
+function getFirstUseISO(){
+  var dates=[];
+  if(S.dailyLog) dates=dates.concat(Object.keys(S.dailyLog));
+  (S.tasks||[]).forEach(function(t){
+    if(t.created) dates.push(t.created.slice(0,10));
+    if(t.day) dates.push(t.day);
+  });
+  (S.completions||[]).forEach(function(c){ if(c.date) dates.push(c.date); });
+  dates=dates.filter(function(d){ return d&&/^\d{4}-\d{2}-\d{2}$/.test(d); });
+  if(!dates.length) return null;
+  return dates.sort()[0];
+}
+
 function getCalWeeks(yr,mo){
   // Returns array of weeks; each week is array of 7 ISO strings (or '' for out-of-month padding)
   var weeks=[];
@@ -3370,9 +3383,9 @@ function getCalWeeks(yr,mo){
   return weeks;
 }
 
-function drawCalVineStrip(canvas,weekDates,weekIdx){
-  var W=canvas.parentElement.clientWidth||window.innerWidth;
-  var H=44;
+function drawCalVineStrip(canvas,weekDates,weekIdx,startDayIdx){
+  var W=canvas.parentElement?canvas.parentElement.clientWidth||window.innerWidth:window.innerWidth;
+  var H=52;
   var dpr=window.devicePixelRatio||1;
   if(canvas.width!==Math.round(W*dpr)||canvas.height!==Math.round(H*dpr)){
     canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
@@ -3381,39 +3394,82 @@ function drawCalVineStrip(canvas,weekDates,weekIdx){
   var ctx=canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
+
+  // collect day states from dailyLog (momentum 0-3), skip future days
+  var dayStates=[];
+  var maxState=0;
+  var todayStr=new Date().toISOString().slice(0,10);
+  for(var d=0;d<7;d++){
+    var iso=weekDates[d];
+    var st=0;
+    if(iso&&iso<=todayStr){
+      st=(S.dailyLog&&S.dailyLog[iso])?Math.max(0,S.dailyLog[iso].momentum||0):0;
+    }
+    dayStates.push(st);
+    if(st>maxState) maxState=st;
+  }
+
   var rtl=weekIdx%2===1;
   var y=H*0.52;
-  var mg=12;
+  var mg=10;
   var sx=rtl?W-mg:mg, ex=rtl?mg:W-mg;
-  var wave=Math.sin(vineT*0.45+weekIdx*1.2)*5;
+  var wave=Math.sin(vineT*0.45+weekIdx*1.2)*6;
   var cp1x=sx+(ex-sx)*0.3, cp1y=y-wave;
   var cp2x=sx+(ex-sx)*0.7, cp2y=y+wave;
-  // stem
+
   var vineCol=getComputedStyle(document.documentElement).getPropertyValue('--vine').trim()||'#4a6f40';
+
   ctx.save();
+  // clip to active portion only (startDayIdx >= 0 means vine begins at that column)
+  if(startDayIdx>0){
+    ctx.beginPath();
+    ctx.rect(startDayIdx*(W/7),0,W-startDayIdx*(W/7),H);
+    ctx.clip();
+  }
+
+  // stem — thickness driven by week's max day state
+  var stemW=2+maxState*1.8; // 2px at state 0, up to 7.4px at state 3
   ctx.strokeStyle=vineCol;
-  ctx.lineWidth=1.6;
+  ctx.lineWidth=stemW;
   ctx.lineCap='round';
+  ctx.lineJoin='round';
   ctx.beginPath();
   ctx.moveTo(sx,y);
   ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,ex,y);
   ctx.stroke();
-  ctx.restore();
-  // leaves at days with activity
-  for(var d=0;d<7;d++){
-    var iso=weekDates[d];
-    if(!iso) continue;
-    var state=typeof getDayState==='function'?getDayState(iso):0;
-    if(state===0) continue;
-    var t=(d+0.5)/7;
+
+  // leaves at active days
+  for(var d2=0;d2<7;d2++){
+    var st2=dayStates[d2];
+    if(st2===0||!weekDates[d2]) continue;
+    var t=(d2+0.5)/7;
     if(rtl) t=1-t;
-    var mt2=1-t;
-    var px=mt2*mt2*mt2*sx+3*mt2*mt2*t*cp1x+3*mt2*t*t*cp2x+t*t*t*ex;
-    var py=mt2*mt2*mt2*y+3*mt2*mt2*t*cp1y+3*mt2*t*t*cp2y+t*t*t*y;
-    var sz=6+state*2;
-    var ang=Math.sin(vineT*0.35+d*0.8)*0.35+(d%2===0?-0.45:0.45);
-    if(typeof drawLeaf==='function') drawLeaf(ctx,px,py,sz,ang,state/3);
+    var mt=1-t;
+    var px=mt*mt*mt*sx+3*mt*mt*t*cp1x+3*mt*t*t*cp2x+t*t*t*ex;
+    var py=mt*mt*mt*y+3*mt*mt*t*cp1y+3*mt*t*t*cp2y+t*t*t*y;
+
+    var leafSz=11+st2*2.5;  // 13.5 at 1, 16 at 2, 18.5 at 3
+    var age=st2/3;
+    var wobble=Math.sin(vineT*0.4+d2*1.1)*0.22;
+    var sideAngle=d2%2===0?-0.3:0.3;
+
+    // upper leaf (always shown for state >= 1)
+    drawLeaf(ctx,px,py,leafSz,sideAngle+wobble,age);
+
+    // lower leaf (state 2+)
+    if(st2>=2){
+      drawLeaf(ctx,px,py,leafSz*0.78,Math.PI+(sideAngle*-0.8)-wobble,age*0.9);
+    }
+
+    // extra side leaf + tendril (state 3)
+    if(st2===3){
+      drawLeaf(ctx,px,py,leafSz*0.55,-Math.PI*0.55+wobble*1.2,age*0.8);
+      if(typeof drawTendril==='function'){
+        drawTendril(ctx,px+(d2%2===0?8:-8),py-3,leafSz*0.38,1.2,wobble*2);
+      }
+    }
   }
+  ctx.restore();
 }
 
 function renderMobCal(){
@@ -3424,6 +3480,7 @@ function renderMobCal(){
   label.textContent=months[_calMonth]+' '+_calYear;
   var weeks=getCalWeeks(_calYear,_calMonth);
   var todayISO=new Date().toISOString().slice(0,10);
+  var firstUse=getFirstUseISO();
   body.innerHTML='';
   weeks.forEach(function(weekDates,wi){
     var wDiv=document.createElement('div');
@@ -3438,20 +3495,36 @@ function renderMobCal(){
       if(iso){
         cell.classList.add('cal-tap');
         cell.textContent=parseInt(iso.slice(8),10);
-        cell.addEventListener('click',function(){ closeMobCal(iso); });
+        (function(d){ cell.addEventListener('click',function(){ closeMobCal(d); }); })(iso);
       }
       dRow.appendChild(cell);
     });
     wDiv.appendChild(dRow);
-    // vine strip row
-    var vRow=document.createElement('div');
-    vRow.className='mob-cal-vinerow';
-    var vc=document.createElement('canvas');
-    vRow.appendChild(vc);
-    wDiv.appendChild(vRow);
-    body.appendChild(wDiv);
-    // draw vine after DOM is laid out
-    requestAnimationFrame(function(){ drawCalVineStrip(vc,weekDates,wi); });
+    // determine vine visibility for this week
+    var realDays=weekDates.filter(function(d){ return d!==''; });
+    var weekFirst=realDays[0]||'', weekLast=realDays[realDays.length-1]||'';
+    // skip vine entirely if the whole week is before first use
+    var showVine=!firstUse||weekLast>=firstUse;
+    if(showVine){
+      // find startDayIdx if firstUse falls within this week
+      var startDayIdx=-1;
+      if(firstUse&&weekFirst<=firstUse&&firstUse<=weekLast){
+        for(var d=0;d<7;d++){
+          if(weekDates[d]===firstUse){ startDayIdx=d; break; }
+        }
+      }
+      var vRow=document.createElement('div');
+      vRow.className='mob-cal-vinerow';
+      var vc=document.createElement('canvas');
+      vRow.appendChild(vc);
+      wDiv.appendChild(vRow);
+      body.appendChild(wDiv);
+      (function(canvas,dates,idx,start){
+        requestAnimationFrame(function(){ drawCalVineStrip(canvas,dates,idx,start); });
+      })(vc,weekDates,wi,startDayIdx);
+    } else {
+      body.appendChild(wDiv);
+    }
   });
 }
 
@@ -3600,6 +3673,29 @@ function initMobile(){
       if(Math.abs(dx)>44&&Math.abs(dx)>Math.abs(dy)*1.5){
         navMobDay(dx<0?1:-1);
       }
+    },{passive:true});
+  }
+
+  // Swipe left/right on calendar view to navigate months
+  var calView=document.getElementById('mobCalView');
+  if(calView){
+    var calSwX=null,calSwY=null,calSwLocked=null;
+    calView.addEventListener('touchstart',function(e){
+      calSwX=e.touches[0].clientX; calSwY=e.touches[0].clientY; calSwLocked=null;
+    },{passive:true});
+    calView.addEventListener('touchmove',function(e){
+      if(calSwX===null) return;
+      var dx=e.touches[0].clientX-calSwX, dy=e.touches[0].clientY-calSwY;
+      if(calSwLocked===null&&(Math.abs(dx)>8||Math.abs(dy)>8)){
+        calSwLocked=Math.abs(dx)>Math.abs(dy)?'h':'v';
+      }
+      if(calSwLocked==='h') e.preventDefault();
+    },{passive:false});
+    calView.addEventListener('touchend',function(e){
+      if(calSwX===null||calSwLocked!=='h'){ calSwX=null; return; }
+      var dx=e.changedTouches[0].clientX-calSwX;
+      calSwX=null;
+      if(Math.abs(dx)>50) mobCalChangeMonth(dx<0?1:-1);
     },{passive:true});
   }
 
