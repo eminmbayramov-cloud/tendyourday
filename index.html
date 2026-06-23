@@ -1712,67 +1712,67 @@ function loadFromSupabase(uid){
 }
 
 function syncToSupabase(){
-  if(!_userId){ console.warn('[Tend:sync] no _userId'); return; }
-  if(!hasUnsyncedChanges){ console.log('[Tend:sync] skipping — no user changes since boot'); return; }
-  hasUnsyncedChanges=false;
+  if(!_userId){ console.warn('[Tend:sync] no _userId — skipping'); return; }
+  if(!hasUnsyncedChanges){ console.log('[Tend:sync] skipping — no changes since boot'); return; }
+  // NOTE: do NOT reset hasUnsyncedChanges here. It must stay true so that
+  // saveS() continues to schedule syncs after this run completes.
+  // It only needs to be false during the boot sequence (before runBoot sets it true).
   var uid=_userId;
+  var ts=new Date().toISOString();
 
-  // Wrap each object as {id, user_id, data}
-  var taskRows  = S.tasks.map(function(t){ return {id:t.id, user_id:uid, data:t}; });
-  var blRows    = S.backlog.map(function(b){ return {id:b.id, user_id:uid, data:b}; });
-  // completions have no standalone id — use taskId_date as synthetic key
-  var compRows  = (S.completions||[]).map(function(c){
+  var taskRows = S.tasks.map(function(t){ return {id:t.id, user_id:uid, data:t}; });
+  var blRows   = S.backlog.map(function(b){ return {id:b.id, user_id:uid, data:b}; });
+  var compRows = (S.completions||[]).map(function(c){
     return {id:c.taskId+'_'+c.date, user_id:uid, data:c};
   });
-  var stateRow  = {user_id:uid, data:{
+  var stateRow = {user_id:uid, data:{
     momentum:S.momentum||0, maxStreak:S.maxStreak||0,
     lastMaxDay:S.lastMaxDay||'', weekOff:S.weekOff||0,
     _wkStamp:S._wkStamp||'', busy:S.busy||{},
     dailyLog:S.dailyLog||{}, filterByMomentum:S.filterByMomentum!==false
   }};
 
-  console.log('[Tend:sync] ▶ uid:', uid,
+  console.log('[Tend:sync] ▶ FIRING at', ts,
     '| tasks:', taskRows.length,
     '| backlog:', blRows.length,
-    '| completions:', compRows.length);
-  if(taskRows.length) console.log('[Tend:sync] first task row:', JSON.stringify(taskRows[0]));
+    '| completions:', compRows.length,
+    '| uid:', uid);
 
   // tasks: full replace
   _supabase.from('tasks').delete().eq('user_id',uid)
     .then(function(d){
-      console.log('[Tend:sync] tasks DELETE →', d.status, d.error&&d.error.message);
-      if(!taskRows.length) return;
+      console.log('[Tend:sync] tasks DELETE →', d.status, d.error ? 'ERR:'+d.error.message : 'ok');
+      if(!taskRows.length){ console.log('[Tend:sync] tasks INSERT → skipped (none)'); return; }
       return _supabase.from('tasks').insert(taskRows).then(function(d){
-        console.log('[Tend:sync] tasks INSERT →', d.status, d.error&&d.error.message);
+        console.log('[Tend:sync] tasks INSERT →', d.status, d.error ? 'ERR:'+d.error.message : 'ok ('+taskRows.length+' rows)');
       });
-    }).catch(function(e){ console.error('[Tend:sync] tasks:', e); });
+    }).catch(function(e){ console.error('[Tend:sync] tasks error:', e); });
 
   // backlog: full replace
   _supabase.from('backlog').delete().eq('user_id',uid)
     .then(function(d){
-      console.log('[Tend:sync] backlog DELETE →', d.status, d.error&&d.error.message);
-      if(!blRows.length) return;
+      console.log('[Tend:sync] backlog DELETE →', d.status, d.error ? 'ERR:'+d.error.message : 'ok');
+      if(!blRows.length){ console.log('[Tend:sync] backlog INSERT → skipped (none)'); return; }
       return _supabase.from('backlog').insert(blRows).then(function(d){
-        console.log('[Tend:sync] backlog INSERT →', d.status, d.error&&d.error.message);
+        console.log('[Tend:sync] backlog INSERT →', d.status, d.error ? 'ERR:'+d.error.message : 'ok ('+blRows.length+' rows)');
       });
-    }).catch(function(e){ console.error('[Tend:sync] backlog:', e); });
+    }).catch(function(e){ console.error('[Tend:sync] backlog error:', e); });
 
   // completions: full replace
   _supabase.from('completions').delete().eq('user_id',uid)
     .then(function(d){
-      console.log('[Tend:sync] completions DELETE →', d.status, d.error&&d.error.message);
-      if(!compRows.length) return;
+      console.log('[Tend:sync] completions DELETE →', d.status, d.error ? 'ERR:'+d.error.message : 'ok');
+      if(!compRows.length){ console.log('[Tend:sync] completions INSERT → skipped (none)'); return; }
       return _supabase.from('completions').insert(compRows).then(function(d){
-        console.log('[Tend:sync] completions INSERT →', d.status, d.error&&d.error.message);
+        console.log('[Tend:sync] completions INSERT →', d.status, d.error ? 'ERR:'+d.error.message : 'ok ('+compRows.length+' rows)');
       });
-    }).catch(function(e){ console.error('[Tend:sync] completions:', e); });
+    }).catch(function(e){ console.error('[Tend:sync] completions error:', e); });
 
-  // user_state: single upserted row
-  console.log('[Tend:sync] user_state UPSERT data:', JSON.stringify(stateRow.data));
+  // user_state: upsert
   _supabase.from('user_state').upsert(stateRow,{onConflict:'user_id'})
     .then(function(d){
-      console.log('[Tend:sync] user_state UPSERT →', d.status, d.error&&d.error.message);
-    }).catch(function(e){ console.error('[Tend:sync] user_state:', e); });
+      console.log('[Tend:sync] user_state UPSERT →', d.status, d.error ? 'ERR:'+d.error.message : 'ok');
+    }).catch(function(e){ console.error('[Tend:sync] user_state error:', e); });
 }
 
 // ═══════════════════════════
@@ -1951,8 +1951,26 @@ function showApp(session){
   });
 })();
 
-window.addEventListener('beforeunload',function(){ localStorage.setItem('tide_last_ts',Date.now()); });
-document.addEventListener('visibilitychange',function(){ if (document.hidden) localStorage.setItem('tide_last_ts',Date.now()); });
+window.addEventListener('beforeunload',function(){
+  localStorage.setItem('tide_last_ts',Date.now());
+  // Flush any pending sync immediately on page close/refresh
+  if(_userId && hasUnsyncedChanges){
+    if(_sbSaveTimer){ clearTimeout(_sbSaveTimer); _sbSaveTimer=null; }
+    console.log('[Tend:sync] beforeunload — flushing sync');
+    syncToSupabase();
+  }
+});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){
+    localStorage.setItem('tide_last_ts',Date.now());
+    // Also flush when tab is hidden (switching apps, closing tab)
+    if(_userId && hasUnsyncedChanges && _sbSaveTimer){
+      clearTimeout(_sbSaveTimer); _sbSaveTimer=null;
+      console.log('[Tend:sync] visibilitychange hidden — flushing sync');
+      syncToSupabase();
+    }
+  }
+});
 
 setInterval(function(){
   if (S.momentum<=0) return;
