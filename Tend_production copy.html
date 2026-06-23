@@ -368,33 +368,6 @@ body.auth-gate #momCanvas{display:none}
   .msi:active{background:var(--surf2)}
   .msi.danger{color:#c0473a}
   .msc{width:100%;padding:14px;background:var(--surf2);border:none;border-radius:10px;font-family:var(--ff);font-size:15px;font-weight:600;color:var(--txt);cursor:pointer;margin-top:8px}
-  /* ── Weather + Calendar ── */
-  #mobWeatherCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:block}
-  #mobSlide{z-index:1;background:transparent}
-  #mobVineCanvas{cursor:pointer}
-  #mobDayClip{transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s ease}
-  #mobDayClip.mob-zoom-out{transform:scale(1.07);opacity:0;pointer-events:none}
-  #mobCalView{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s ease;transform-origin:center 40px;will-change:transform,opacity}
-  #mobCalView.cal-hidden{transform:scale(0.91);opacity:0;pointer-events:none}
-  #mobCalBar{height:56px;background:var(--vine);display:flex;align-items:center;padding:0 14px;flex-shrink:0}
-  #mobCalNavGroup{flex:1;display:flex;align-items:center;justify-content:center;gap:2px}
-  #mobCalMonthLabel{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.2px;min-width:120px;text-align:center}
-  #mobCalAccBtn{background:none;border:none;color:rgba(255,255,255,.85);padding:8px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
-  .mob-cal-nav{background:none;border:none;color:rgba(255,255,255,.85);font-size:22px;line-height:1;padding:4px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  #mobCalScroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
-  .mob-cal-dnames{display:grid;grid-template-columns:repeat(7,1fr);padding:5px 0 4px;border-bottom:1px solid var(--bdr);background:var(--surf2)}
-  .mob-cal-dnames span{text-align:center;font-size:9px;font-weight:600;color:var(--fnt);letter-spacing:.5px;text-transform:uppercase}
-  .mob-cal-week{border-bottom:1px solid rgba(0,0,0,.04)}
-  .mob-cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
-  .mob-cal-day{text-align:center;font-size:13px;color:var(--txt);padding:5px 0 4px;position:relative;-webkit-tap-highlight-color:transparent;user-select:none}
-  .mob-cal-day.cal-today{font-weight:700;color:var(--vine)}
-  .mob-cal-day.cal-today::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--vine);border-radius:50%}
-  .mob-cal-day.cal-other{opacity:.28}
-  .mob-cal-day.cal-tap{cursor:pointer}
-  .mob-cal-day.cal-tap:active{opacity:.5}
-  .mob-cal-vinerow{width:100%;overflow:hidden}
-  .mob-cal-vinerow canvas{display:block;width:100%;height:44px}
-  .mob-cal-tip{text-align:center;font-size:11px;color:var(--fnt);padding:18px 0 12px;opacity:.6;letter-spacing:.3px}
 }
 </style>
 </head>
@@ -494,7 +467,6 @@ body.auth-gate #momCanvas{display:none}
   </div>
 
   <div id="mobDayClip">
-    <canvas id="mobWeatherCanvas"></canvas>
     <div id="mobSlide">
       <canvas id="mobVineCanvas"></canvas>
       <div id="mobTaskList"></div>
@@ -524,27 +496,6 @@ body.auth-gate #momCanvas{display:none}
     <button class="mob-acc-btn danger" id="mobAccReset">Reset Progress</button>
     <div class="mob-acc-divider"></div>
     <button class="mob-acc-btn" id="mobAccSignOut">Sign out</button>
-  </div>
-
-  <div id="mobCalView" class="cal-hidden" style="display:none">
-    <div id="mobCalBar">
-      <button id="mobCalAccBtn" onclick="closeMobCal(null)">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 15L8 10L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div id="mobCalNavGroup">
-        <button class="mob-cal-nav" id="mobCalPrev" onclick="mobCalChangeMonth(-1)">&#8249;</button>
-        <div id="mobCalMonthLabel"></div>
-        <button class="mob-cal-nav" id="mobCalNext" onclick="mobCalChangeMonth(1)">&#8250;</button>
-      </div>
-      <div style="width:36px"></div>
-    </div>
-    <div id="mobCalScroll">
-      <div class="mob-cal-dnames">
-        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-      </div>
-      <div id="mobCalBody"></div>
-      <div class="mob-cal-tip">Tap a day to jump to it</div>
-    </div>
   </div>
 </div>
 
@@ -2847,7 +2798,6 @@ function vineLoop(now){
   lastFrameTime=now;
   vineT+=0.008;
   if(typeof isMobile==='function'&&isMobile()){
-    if(typeof drawMobWeather==='function') drawMobWeather();
     if(typeof drawMobVine==='function') drawMobVine();
   } else {
     sizeMomentumCanvas();
@@ -2937,68 +2887,7 @@ function drawMobVine(){
   ctx.clearRect(0,0,W,H);
   var iso=getMobISO();
   var baselineY=H-22;
-  drawColumnVine(ctx,{left:-10,top:0,width:W+20,height:H},{left:0,top:0},iso,vineT,0,baselineY,baselineY);
-}
-
-function drawMobWeather(){
-  if(!isMobile()) return;
-  var cv=document.getElementById('mobWeatherCanvas');
-  if(!cv||!cv.parentElement) return;
-  var W=cv.parentElement.clientWidth||window.innerWidth;
-  var H=cv.parentElement.clientHeight||window.innerHeight;
-  var dpr=window.devicePixelRatio||1;
-  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){
-    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
-    cv.style.width=W+'px'; cv.style.height=H+'px';
-  }
-  var ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-  var mom=Math.max(0,Math.min(3,S.momentum||0));
-  var mt=mom/3;
-  // Sky gradient: muted grey-white at low → warm sage-green at high
-  var tR=Math.round(232+(212-232)*mt);
-  var tG=Math.round(229+(232-229)*mt);
-  var tB=Math.round(224+(205-224)*mt);
-  var grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'rgb('+tR+','+tG+','+tB+')');
-  grad.addColorStop(0.55,'rgba(250,248,244,0.6)');
-  grad.addColorStop(1,'rgba(250,248,244,0)');
-  ctx.fillStyle=grad;
-  ctx.fillRect(0,0,W,H);
-  // Light rays appear at mom 2+
-  if(mom>=2){
-    var rayStr=(mom-2)/1;
-    var pulse=0.82+Math.sin(vineT*0.55)*0.18;
-    var cx=W*0.5,cy=-H*0.12;
-    var glow=ctx.createRadialGradient(cx,cy,0,cx,cy,H*0.75);
-    var glowA=rayStr*0.10*pulse;
-    if(mom>=3){glow.addColorStop(0,'rgba(215,195,120,'+glowA+')');}
-    else{glow.addColorStop(0,'rgba(175,205,160,'+glowA+')');}
-    glow.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=glow;
-    ctx.fillRect(0,0,W,H);
-    // conic ray beams
-    var nRays=5;
-    ctx.save();
-    for(var i=0;i<nRays;i++){
-      var baseAng=(i/nRays)*Math.PI+Math.PI*0.0+Math.sin(vineT*0.25+i)*0.06;
-      var spread=0.16+0.04*Math.sin(vineT*0.4+i*1.3);
-      var rx1=cx+Math.cos(baseAng-spread)*18, ry1=cy+Math.sin(baseAng-spread)*18;
-      var rx2=cx+Math.cos(baseAng+spread)*18, ry2=cy+Math.sin(baseAng+spread)*18;
-      var len=H*2.2;
-      ctx.beginPath();
-      ctx.moveTo(rx1,ry1);
-      ctx.lineTo(cx+Math.cos(baseAng-spread)*len,cy+Math.sin(baseAng-spread)*len);
-      ctx.lineTo(cx+Math.cos(baseAng+spread)*len,cy+Math.sin(baseAng+spread)*len);
-      ctx.lineTo(rx2,ry2);
-      ctx.closePath();
-      var ra=rayStr*0.045*pulse;
-      ctx.fillStyle=mom>=3?'rgba(190,165,80,'+ra+')':'rgba(155,185,135,'+ra+')';
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+  drawColumnVine(ctx,{left:0,top:0,width:W,height:H},{left:0,top:0},iso,vineT,10,baselineY,baselineY);
 }
 
 // ── Day task list ─────────────────────────────────────────────────
@@ -3345,154 +3234,6 @@ function navMobDay(dir){
   animateMobSlide(dir>0?'left':'right');
 }
 
-// ── Calendar ─────────────────────────────────────────────────────
-var _calYear=0, _calMonth=0;
-
-function getCalWeeks(yr,mo){
-  // Returns array of weeks; each week is array of 7 ISO strings (or '' for out-of-month padding)
-  var weeks=[];
-  var first=new Date(yr,mo,1);
-  var startDow=first.getDay(); // 0=Sun
-  var daysInMonth=new Date(yr,mo+1,0).getDate();
-  var day=1-startDow; // can be negative for leading padding
-  while(day<=daysInMonth){
-    var week=[];
-    for(var d=0;d<7;d++){
-      if(day<1||day>daysInMonth){ week.push(''); }
-      else{
-        var dd=new Date(yr,mo,day);
-        week.push(dd.toISOString().slice(0,10));
-      }
-      day++;
-    }
-    weeks.push(week);
-  }
-  return weeks;
-}
-
-function drawCalVineStrip(canvas,weekDates,weekIdx){
-  var W=canvas.parentElement.clientWidth||window.innerWidth;
-  var H=44;
-  var dpr=window.devicePixelRatio||1;
-  if(canvas.width!==Math.round(W*dpr)||canvas.height!==Math.round(H*dpr)){
-    canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
-    canvas.style.width=W+'px'; canvas.style.height=H+'px';
-  }
-  var ctx=canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-  var rtl=weekIdx%2===1;
-  var y=H*0.52;
-  var mg=12;
-  var sx=rtl?W-mg:mg, ex=rtl?mg:W-mg;
-  var wave=Math.sin(vineT*0.45+weekIdx*1.2)*5;
-  var cp1x=sx+(ex-sx)*0.3, cp1y=y-wave;
-  var cp2x=sx+(ex-sx)*0.7, cp2y=y+wave;
-  // stem
-  var vineCol=getComputedStyle(document.documentElement).getPropertyValue('--vine').trim()||'#4a6f40';
-  ctx.save();
-  ctx.strokeStyle=vineCol;
-  ctx.lineWidth=1.6;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(sx,y);
-  ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,ex,y);
-  ctx.stroke();
-  ctx.restore();
-  // leaves at days with activity
-  for(var d=0;d<7;d++){
-    var iso=weekDates[d];
-    if(!iso) continue;
-    var state=typeof getDayState==='function'?getDayState(iso):0;
-    if(state===0) continue;
-    var t=(d+0.5)/7;
-    if(rtl) t=1-t;
-    var mt2=1-t;
-    var px=mt2*mt2*mt2*sx+3*mt2*mt2*t*cp1x+3*mt2*t*t*cp2x+t*t*t*ex;
-    var py=mt2*mt2*mt2*y+3*mt2*mt2*t*cp1y+3*mt2*t*t*cp2y+t*t*t*y;
-    var sz=6+state*2;
-    var ang=Math.sin(vineT*0.35+d*0.8)*0.35+(d%2===0?-0.45:0.45);
-    if(typeof drawLeaf==='function') drawLeaf(ctx,px,py,sz,ang,state/3);
-  }
-}
-
-function renderMobCal(){
-  var label=document.getElementById('mobCalMonthLabel');
-  var body=document.getElementById('mobCalBody');
-  if(!label||!body) return;
-  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  label.textContent=months[_calMonth]+' '+_calYear;
-  var weeks=getCalWeeks(_calYear,_calMonth);
-  var todayISO=new Date().toISOString().slice(0,10);
-  body.innerHTML='';
-  weeks.forEach(function(weekDates,wi){
-    var wDiv=document.createElement('div');
-    wDiv.className='mob-cal-week';
-    // day number row
-    var dRow=document.createElement('div');
-    dRow.className='mob-cal-days';
-    weekDates.forEach(function(iso){
-      var cell=document.createElement('div');
-      cell.className='mob-cal-day'+(iso===''?' cal-other':'');
-      if(iso===todayISO) cell.classList.add('cal-today');
-      if(iso){
-        cell.classList.add('cal-tap');
-        cell.textContent=parseInt(iso.slice(8),10);
-        cell.addEventListener('click',function(){ closeMobCal(iso); });
-      }
-      dRow.appendChild(cell);
-    });
-    wDiv.appendChild(dRow);
-    // vine strip row
-    var vRow=document.createElement('div');
-    vRow.className='mob-cal-vinerow';
-    var vc=document.createElement('canvas');
-    vRow.appendChild(vc);
-    wDiv.appendChild(vRow);
-    body.appendChild(wDiv);
-    // draw vine after DOM is laid out
-    requestAnimationFrame(function(){ drawCalVineStrip(vc,weekDates,wi); });
-  });
-}
-
-function mobCalChangeMonth(delta){
-  _calMonth+=delta;
-  if(_calMonth>11){ _calMonth=0; _calYear++; }
-  if(_calMonth<0){ _calMonth=11; _calYear--; }
-  renderMobCal();
-}
-
-function openMobCal(){
-  var calEl=document.getElementById('mobCalView');
-  var clip=document.getElementById('mobDayClip');
-  if(!calEl) return;
-  var iso=getMobISO();
-  _calYear=parseInt(iso.slice(0,4),10);
-  _calMonth=parseInt(iso.slice(5,7),10)-1;
-  calEl.style.display='flex';
-  // force reflow before animating
-  void calEl.offsetWidth;
-  calEl.classList.remove('cal-hidden');
-  if(clip) clip.classList.add('mob-zoom-out');
-}
-
-function closeMobCal(dayISO){
-  var calEl=document.getElementById('mobCalView');
-  var clip=document.getElementById('mobDayClip');
-  if(!calEl||calEl.style.display==='none') return;
-  calEl.classList.add('cal-hidden');
-  if(clip) clip.classList.remove('mob-zoom-out');
-  if(dayISO){
-    var d=new Date(dayISO+'T00:00:00');
-    var today=new Date(); today.setHours(0,0,0,0);
-    mobileDayOffset=Math.round((d-today)/86400000);
-    renderMobTopBar(); renderMobTasks(); animateMobSlide('right');
-  }
-  setTimeout(function(){
-    calEl.style.display='none';
-  },340);
-}
-
 // ── Init ─────────────────────────────────────────────────────────
 function initMobile(){
   var prev=document.getElementById('mobPrev');
@@ -3599,24 +3340,6 @@ function initMobile(){
       swStartX=null;
       if(Math.abs(dx)>44&&Math.abs(dx)>Math.abs(dy)*1.5){
         navMobDay(dx<0?1:-1);
-      }
-    },{passive:true});
-  }
-
-  // Vine tap → open calendar
-  var vineCanvas=document.getElementById('mobVineCanvas');
-  if(vineCanvas){
-    var vtStartX=0,vtStartY=0;
-    vineCanvas.addEventListener('touchstart',function(e){
-      vtStartX=e.touches[0].clientX; vtStartY=e.touches[0].clientY;
-    },{passive:true});
-    vineCanvas.addEventListener('touchend',function(e){
-      if(mobDragState) return;
-      var dx=e.changedTouches[0].clientX-vtStartX;
-      var dy=e.changedTouches[0].clientY-vtStartY;
-      if(Math.abs(dx)<12&&Math.abs(dy)<12){
-        openMobCal();
-        renderMobCal();
       }
     },{passive:true});
   }
