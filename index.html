@@ -2819,7 +2819,7 @@ window.addEventListener('resize',function(){
 // ═══════════════════════════════════════════════════════════════
 
 var mobileDayOffset = 0;
-var mobDrawerOpen   = false;
+var mobDrawerState  = 0;   // 0=peek  1=half  2=full
 var mobDrawerH      = 72;
 var MOB_PEEK_H      = 72;
 var mobDragState    = null;
@@ -3066,7 +3066,7 @@ function movePendToDay(task){
 function beginPendDrag(el,task,clientX,clientY){
   if(navigator.vibrate) navigator.vibrate(12);
   el.classList.add('mob-lifting');
-  setMobDrawer(MOB_PEEK_H,true);
+  mobDrawerState=0; setMobDrawer(MOB_PEEK_H,true);
   var ghost=document.createElement('div');
   ghost.id='mobGhost';
   ghost.className='mob-pend-card '+nd(task.diff)+' mob-ghost-card';
@@ -3076,8 +3076,9 @@ function beginPendDrag(el,task,clientX,clientY){
   document.body.appendChild(ghost);
   var dz=document.getElementById('mobDropZone');
   if(dz) dz.style.opacity='1';
-  mobDragState={task:task,ghost:ghost,cardEl:el,startX:clientX,baseDay:mobileDayOffset,
-    threshold:Math.round(window.innerWidth*0.28)};
+  mobDragState={task:task,ghost:ghost,cardEl:el,startX:clientX,startY:clientY,
+    baseDay:mobileDayOffset,overDrawer:false,
+    threshold:Math.round(window.innerWidth*0.4)};
   document.addEventListener('touchmove',onPendDragMove,{passive:false});
   document.addEventListener('touchend',onPendDragEnd,{passive:true});
 }
@@ -3088,12 +3089,26 @@ function onPendDragMove(e){
   var x=e.touches[0].clientX, y=e.touches[0].clientY;
   var st=mobDragState;
   st.ghost.style.left=(x-110)+'px'; st.ghost.style.top=(y-30)+'px';
-  var dayDelta=Math.round((x-st.startX)/st.threshold);
-  var newDay=Math.max(-60,Math.min(14,st.baseDay+dayDelta));
-  if(newDay!==mobileDayOffset){
-    var dir=newDay>mobileDayOffset?'left':'right';
-    mobileDayOffset=newDay;
-    renderMobTopBar(); renderMobTasks(); animateMobSlide(dir);
+
+  // Bottom-25% zone: ghost is hovering over drawer area
+  var inDrawer=y>window.innerHeight*0.75;
+  if(inDrawer&&!st.overDrawer){
+    st.overDrawer=true;
+    snapDrawer(1); // animate drawer up to half
+  } else if(!inDrawer&&st.overDrawer){
+    st.overDrawer=false;
+    mobDrawerState=0; setMobDrawer(MOB_PEEK_H,true); // shrink back to peek
+  }
+
+  // Day switching — only when in day-view area (not over drawer)
+  if(!inDrawer){
+    var dayDelta=Math.round((x-st.startX)/st.threshold);
+    var newDay=Math.max(-60,Math.min(14,st.baseDay+dayDelta));
+    if(newDay!==mobileDayOffset){
+      var dir=newDay>mobileDayOffset?'left':'right';
+      mobileDayOffset=newDay;
+      renderMobTopBar(); renderMobTasks(); animateMobSlide(dir);
+    }
   }
 }
 
@@ -3102,14 +3117,18 @@ function onPendDragEnd(){
   document.removeEventListener('touchmove',onPendDragMove);
   document.removeEventListener('touchend',onPendDragEnd);
   var st=mobDragState; mobDragState=null;
-  movePendToDay(st.task);
   if(st.ghost&&st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
   if(st.cardEl) st.cardEl.classList.remove('mob-lifting');
   var dz=document.getElementById('mobDropZone'); if(dz) dz.style.opacity='0';
-  setTimeout(function(){
-    setMobDrawer(Math.min(window.innerHeight*0.62,460),true);
-    mobDrawerOpen=true; renderMobDrawer();
-  },320);
+  if(st.overDrawer){
+    // Released over drawer → return to pending, leave drawer at half
+    snapDrawer(1);
+    renderMobDrawer();
+  } else {
+    // Released over day view → assign to that day
+    movePendToDay(st.task);
+    setTimeout(function(){ snapDrawer(1); renderMobDrawer(); },320);
+  }
 }
 
 // ── Hold-to-reorder in day list ──────────────────────────────────
@@ -3192,6 +3211,13 @@ function setMobDrawer(h,animated){
   var addBtn=document.getElementById('mobAddBtn');
   if(addBtn) addBtn.style.bottom=(h+16)+'px';
 }
+function getMobHalfH(){ return Math.round(window.innerHeight*0.5); }
+function getMobFullH(){ return Math.round(window.innerHeight*0.9); }
+function snapDrawer(state){
+  mobDrawerState=state;
+  var h=state===2?getMobFullH():state===1?getMobHalfH():MOB_PEEK_H;
+  setMobDrawer(h,true);
+}
 
 // ── Slide animation ───────────────────────────────────────────────
 function animateMobSlide(dir){
@@ -3230,29 +3256,33 @@ function initMobile(){
   if(pull){
     pull.addEventListener('click',function(){
       if(mobDragState) return;
-      mobDrawerOpen=!mobDrawerOpen;
-      setMobDrawer(mobDrawerOpen?Math.min(window.innerHeight*0.62,460):MOB_PEEK_H,true);
+      // Cycle: peek→half→full→peek
+      snapDrawer((mobDrawerState+1)%3);
     });
     // Drawer drag gesture on handle
-    var drwTouchY=null, drwTouchH=null;
+    var drwTouchY=null, drwTouchH=null, drwFromState=0;
     pull.addEventListener('touchstart',function(e){
       if(mobDragState) return;
-      drwTouchY=e.touches[0].clientY; drwTouchH=mobDrawerH;
+      drwTouchY=e.touches[0].clientY; drwTouchH=mobDrawerH; drwFromState=mobDrawerState;
     },{passive:true});
     document.addEventListener('touchmove',function(e){
       if(drwTouchY===null||mobDragState) return;
       var dy=drwTouchY-e.touches[0].clientY;
-      var newH=Math.max(MOB_PEEK_H,Math.min(window.innerHeight*0.8,drwTouchH+dy));
+      var newH=Math.max(MOB_PEEK_H,Math.min(getMobFullH(),drwTouchH+dy));
       setMobDrawer(newH,false);
     },{passive:true});
     document.addEventListener('touchend',function(){
       if(drwTouchY===null) return;
       drwTouchY=null;
-      if(mobDrawerH>window.innerHeight*0.22){
-        setMobDrawer(Math.min(window.innerHeight*0.62,460),true); mobDrawerOpen=true;
+      var pct=mobDrawerH/window.innerHeight;
+      var newState;
+      if(drwFromState===2){
+        // Dragging down from full skips half, goes straight to peek
+        newState=pct>0.7?2:0;
       } else {
-        setMobDrawer(MOB_PEEK_H,true); mobDrawerOpen=false;
+        newState=pct>0.7?2:pct>0.3?1:0;
       }
+      snapDrawer(newState);
     });
   }
 
@@ -3281,8 +3311,38 @@ function initMobile(){
 
   window.addEventListener('resize',function(){
     if(!isMobile()) return;
-    if(mobDrawerOpen) setMobDrawer(Math.min(window.innerHeight*0.62,460),false);
+    snapDrawer(mobDrawerState);
   });
+
+  // Swipe left/right on day view to navigate days
+  var clip=document.getElementById('mobDayClip');
+  if(clip){
+    var swStartX=null,swStartY=null,swLocked=null;
+    clip.addEventListener('touchstart',function(e){
+      if(mobDragState||mobReorderState) return;
+      swStartX=e.touches[0].clientX;
+      swStartY=e.touches[0].clientY;
+      swLocked=null;
+    },{passive:true});
+    clip.addEventListener('touchmove',function(e){
+      if(swStartX===null||mobDragState||mobReorderState) return;
+      var dx=e.touches[0].clientX-swStartX;
+      var dy=e.touches[0].clientY-swStartY;
+      if(swLocked===null&&(Math.abs(dx)>8||Math.abs(dy)>8)){
+        swLocked=Math.abs(dx)>Math.abs(dy)?'h':'v';
+      }
+      if(swLocked==='h') e.preventDefault();
+    },{passive:false});
+    clip.addEventListener('touchend',function(e){
+      if(swStartX===null||swLocked!=='h'){ swStartX=null; return; }
+      var dx=e.changedTouches[0].clientX-swStartX;
+      var dy=e.changedTouches[0].clientY-swStartY;
+      swStartX=null;
+      if(Math.abs(dx)>44&&Math.abs(dx)>Math.abs(dy)*1.5){
+        navMobDay(dx<0?1:-1);
+      }
+    },{passive:true});
+  }
 
   setMobDrawer(MOB_PEEK_H,false);
   renderMobTopBar(); renderMobTasks(); renderMobDrawer();
