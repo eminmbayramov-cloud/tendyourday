@@ -253,13 +253,8 @@ header{height:52px;padding:0 16px;background:#faf8f4;display:flex;align-items:ce
 /* ── AUTH ── */
 body.auth-gate header,body.auth-gate .layout{display:none!important}
 body.auth-gate #momCanvas{display:none}
-#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:var(--ff);padding:40px 16px;overflow-y:auto}
-.auth-wrap{display:flex;flex-direction:column;align-items:stretch;width:340px;max-width:92vw;margin:auto}
-.auth-hero{text-align:center;padding:0 2px 28px}
-.auth-headline{font-size:26px;font-weight:700;color:var(--txt);letter-spacing:-.5px;line-height:1.25;margin-bottom:11px}
-.auth-subline{font-size:13.5px;color:var(--fnt);line-height:1.65;margin-bottom:11px}
-.auth-beta{font-size:11px;color:var(--mut);line-height:1.55}
-.auth-card{background:var(--surf);border:1px solid var(--bdr);border-radius:16px;padding:32px 28px;box-shadow:0 8px 32px rgba(10,8,4,.1)}
+#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:var(--ff)}
+.auth-card{background:var(--surf);border:1px solid var(--bdr);border-radius:16px;padding:32px 28px;width:340px;max-width:92vw;box-shadow:0 8px 32px rgba(10,8,4,.1)}
 .auth-brand{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:600;color:var(--vine);letter-spacing:-.4px;margin-bottom:24px}
 .auth-tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--surf2);border-radius:8px;padding:3px}
 .auth-tab{flex:1;padding:6px;border:none;border-radius:6px;background:none;font-family:var(--ff);font-size:12px;font-weight:500;color:var(--mut);cursor:pointer;transition:all .15s}
@@ -505,12 +500,6 @@ body.auth-gate #momCanvas{display:none}
 
 <!-- AUTH SCREEN -->
 <div id="authScreen">
-  <div class="auth-wrap">
-  <div class="auth-hero">
-    <div class="auth-headline">Tend to yourself, one small thing at a time</div>
-    <div class="auth-subline">For people who are overwhelmed by productivity apps. No scores, no pressure, just gentle momentum.</div>
-    <div class="auth-beta">🌱 Tend is free while we are in beta. Early members will always get a better deal when we introduce paid plans.</div>
-  </div>
   <div class="auth-card">
     <div class="auth-brand">
       <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
@@ -532,7 +521,6 @@ body.auth-gate #momCanvas{display:none}
     <input class="auth-field" type="password" id="authConfirm" placeholder="Confirm password" autocomplete="new-password" style="display:none"/>
     <button class="auth-submit" id="authSubmit">Sign in</button>
     <div class="auth-msg" id="authMsg"></div>
-  </div>
   </div>
 </div>
 
@@ -713,13 +701,12 @@ function loadS(){
   S.tasks.forEach(function(t){ if(t.recType==='pulse'&&!t.pulseGroupId) t.pulseGroupId=t.id; });
 }
 var _sbSaveTimer=null;
-var hasUnsyncedChanges=false;
 function saveS(){
   try{
     localStorage.setItem('tide_v9', JSON.stringify(S));
     localStorage.setItem('tide_last_ts', Date.now());
   }catch(e){}
-  if(_userId && hasUnsyncedChanges){
+  if(_userId){
     if(_sbSaveTimer) clearTimeout(_sbSaveTimer);
     _sbSaveTimer=setTimeout(syncToSupabase,1500);
   }
@@ -1713,8 +1700,6 @@ function loadFromSupabase(uid){
 
 function syncToSupabase(){
   if(!_userId){ console.warn('[Tend:sync] no _userId'); return; }
-  if(!hasUnsyncedChanges){ console.log('[Tend:sync] skipping — no user changes since boot'); return; }
-  hasUnsyncedChanges=false;
   var uid=_userId;
 
   // Wrap each object as {id, user_id, data}
@@ -1801,7 +1786,6 @@ function runBoot(){
   repairBreakdowns(); runDecay();
   var thisStamp=TODAY_ISO;
   if(S._wkStamp!==thisStamp){ S._wkStamp=thisStamp; saveS(); setTimeout(function(){ openBusyModal(); },700); }
-  hasUnsyncedChanges=true;
   render();
 }
 
@@ -1811,12 +1795,9 @@ function bootApp(){
   loadFromSupabase(_userId)
     .then(function(d){
       if(!d.hasData){
-        // First login for this user — seed Supabase only if localStorage has real data to migrate
+        // First login for this user — seed Supabase from any existing localStorage data
         loadS();
-        if((S.tasks||[]).length||(S.backlog||[]).length||((S.completions||[]).length)){
-          hasUnsyncedChanges=true;
-          syncToSupabase();
-        }
+        syncToSupabase();
       } else {
         applySupabaseData(d);
       }
