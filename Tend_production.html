@@ -179,6 +179,9 @@ header{height:52px;padding:0 16px;background:#faf8f4;display:flex;align-items:ce
 /* ── MODALS ── */
 .ov{position:fixed;inset:0;background:rgba(10,8,4,.22);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;animation:of .15s ease}
 @keyframes of{from{opacity:0}to{opacity:1}}
+@keyframes vgrow{0%{transform:scale(0);opacity:0}30%{transform:scale(1.42);opacity:1}70%{transform:scale(1.42);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes vgrowf{0%{transform:scale(0) rotate(-25deg);opacity:0}30%{transform:scale(1.55) rotate(9deg);opacity:1}70%{transform:scale(1.5) rotate(0);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes vineFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 .mod{background:var(--surf);border-radius:16px;padding:22px;width:376px;max-width:92vw;box-shadow:0 16px 48px rgba(10,8,4,.12);animation:mp .2s cubic-bezier(.34,1.56,.64,1)}
 @keyframes mp{from{transform:scale(.96) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
 .mod h2{font-size:16px;font-weight:600;letter-spacing:-.2px;margin-bottom:4px}
@@ -306,7 +309,7 @@ body.auth-gate #momCanvas{display:none}
   #mobSlide.mob-slide-right{animation:mbSlR .25s cubic-bezier(.4,0,.2,1) both}
   @keyframes mbSlL{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
   @keyframes mbSlR{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
-  #mobVineCanvas{display:block;width:100%;height:140px;flex-shrink:0}
+  #mobVineEl{display:block;width:100%;height:140px;flex-shrink:0;overflow:visible;animation:vineFloat 5s ease-in-out infinite}
   #mobTaskList{padding:8px 14px;display:flex;flex-direction:column;gap:5px;flex:1}
   .mob-sec-lbl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--fnt);padding:4px 0 1px}
   .mob-empty{text-align:center;color:var(--fnt);font-size:12px;padding:32px 20px;line-height:1.6}
@@ -371,7 +374,7 @@ body.auth-gate #momCanvas{display:none}
   /* ── Weather + Calendar ── */
   #mobWeatherCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:block}
   #mobSlide{z-index:1;background:transparent}
-  #mobVineCanvas{cursor:pointer}
+  #mobVineEl{cursor:pointer}
   #mobDayClip{transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s ease}
   #mobDayClip.mob-zoom-out{transform:scale(1.07);opacity:0;pointer-events:none}
   #mobCalView{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s ease;transform-origin:center 40px;will-change:transform,opacity}
@@ -392,8 +395,8 @@ body.auth-gate #momCanvas{display:none}
   .mob-cal-day.cal-other{opacity:.28}
   .mob-cal-day.cal-tap{cursor:pointer}
   .mob-cal-day.cal-tap:active{opacity:.5}
-  .mob-cal-vinerow{width:100%;overflow:hidden}
-  .mob-cal-vinerow canvas{display:block;width:100%}
+  .mob-cal-vinerow{width:100%;overflow:visible}
+  .mob-cal-vinerow svg{display:block}
   .mob-cal-tip{text-align:center;font-size:11px;color:var(--fnt);padding:18px 0 12px;opacity:.6;letter-spacing:.3px}
 }
 </style>
@@ -496,7 +499,7 @@ body.auth-gate #momCanvas{display:none}
   <div id="mobDayClip">
     <canvas id="mobWeatherCanvas"></canvas>
     <div id="mobSlide">
-      <canvas id="mobVineCanvas"></canvas>
+      <div id="mobVineEl"></div>
       <div id="mobTaskList"></div>
     </div>
   </div>
@@ -2848,7 +2851,8 @@ function vineLoop(now){
   vineT+=0.008;
   if(typeof isMobile==='function'&&isMobile()){
     if(typeof drawMobWeather==='function') drawMobWeather();
-    if(typeof drawMobVine==='function') drawMobVine();
+    var _vk=(typeof getMobISO==='function'?getMobISO():'')+'_'+(S.momentum||0).toFixed(1);
+    if(_vk!==window._mobVineKey){window._mobVineKey=_vk;if(typeof drawMobVine==='function') drawMobVine();}
   } else {
     sizeMomentumCanvas();
     drawMomentumPanel(momentumCanvas,S.momentum,now);
@@ -2921,23 +2925,196 @@ function renderMobTopBar(){
 }
 
 // ── Vine canvas ──────────────────────────────────────────────────
+// ── SVG Vine Renderer (design-spec implementation) ────────────────
+var _VCFG=[
+  {stick:'#b09a76',leaf:'#9cb673',leafLight:'#b6cf91',leafScale:0,    leaves:0,tendril:0,flower:0,flowerCount:0,stubs:true},
+  {stick:'#ad9670',leaf:'#9cb673',leafLight:'#b6cf91',leafScale:0.45, leaves:2,tendril:0,flower:0,flowerCount:0},
+  {stick:'#94a064',leaf:'#86ad5f',leafLight:'#a6cd7e',leafScale:0.6,  leaves:3,tendril:0,flower:0,flowerCount:0},
+  {stick:'#789c54',leaf:'#74a24e',leafLight:'#97c570',leafScale:0.78, leaves:4,tendril:0,flower:0,flowerCount:0},
+  {stick:'#6a934b',leaf:'#67993f',leafLight:'#8cbd64',leafScale:0.88, leaves:5,tendril:0,flower:0,flowerCount:0},
+  {stick:'#5f8d46',leaf:'#5d9440',leafLight:'#83b75d',leafScale:1.0,  leaves:6,tendril:1,flower:0,flowerCount:0},
+  {stick:'#578a44',leaf:'#58913d',leafLight:'#7eb358',leafScale:1.05, leaves:7,tendril:2,flower:0,flowerCount:0},
+  {stick:'#4e853d',leaf:'#4f8a39',leafLight:'#77ae51',leafScale:1.1,  leaves:8,tendril:2,flower:0,flowerCount:0},
+  {stick:'#4a823b',leaf:'#4d8838',leafLight:'#74ac4e',leafScale:1.1,  leaves:8,tendril:2,flower:1,flowerCount:3},
+  {stick:'#4a823b',leaf:'#4d8838',leafLight:'#74ac4e',leafScale:1.1,  leaves:8,tendril:2,flower:2,flowerCount:3},
+  {stick:'#4a823b',leaf:'#4d8838',leafLight:'#74ac4e',leafScale:1.1,  leaves:8,tendril:2,flower:3,flowerCount:4}
+];
+var _VLA=[
+  {u:0.08,side:1,s:0.85},{u:0.20,side:-1,s:1.0},{u:0.32,side:1,s:1.05},{u:0.44,side:-1,s:0.95},
+  {u:0.56,side:1,s:1.05},{u:0.68,side:-1,s:1.0},{u:0.80,side:1,s:0.9},{u:0.90,side:-1,s:0.8}
+];
+var _VFA=[{u:0.22,side:-1},{u:0.44,side:1},{u:0.66,side:-1},{u:0.85,side:1}];
+var _VHUE='#e89ab6';
+
+function vSd(n){var x=Math.sin(n*127.1+31.7)*43758.5453;return x-Math.floor(x);}
+function vRgb(h){h=h.replace('#','');return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
+function vLt(hex,a){var c=vRgb(hex);return'rgb('+c.map(function(v){return Math.round(v+(255-v)*a);}).join(',')+')';}
+function vSm(arr,r){var N=arr.length,o=[];for(var i=0;i<N;i++){var s=0,n=0;for(var j=-r;j<=r;j++){var k=i+j;if(k>=0&&k<N){s+=arr[k];n++;}}o.push(s/n);}return o;}
+function vTn(pts,i){var a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];return[pts[i][0],pts[i][1],Math.atan2(b[1]-a[1],b[0]-a[0])];}
+function vf(v){return v.toFixed(2);}
+
+function vRib(pts,wFn,cFn,sheen){
+  var N=pts.length,top=[],bot=[];
+  for(var i=0;i<N;i++){
+    var p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(N-1,i+1)];
+    var tx=b[0]-a[0],ty=b[1]-a[1],len=Math.hypot(tx,ty)||1;
+    var nx=-ty/len,ny=tx/len,w=wFn(i);
+    top.push([p[0]+nx*w,p[1]+ny*w]);bot.push([p[0]-nx*w,p[1]-ny*w]);
+  }
+  var s='';
+  for(var i=0;i<N-1;i++){
+    var c=cFn(i);
+    s+='<path d="M'+vf(top[i][0])+','+vf(top[i][1])+' L'+vf(top[i+1][0])+','+vf(top[i+1][1])+' L'+vf(bot[i+1][0])+','+vf(bot[i+1][1])+' L'+vf(bot[i][0])+','+vf(bot[i][1])+' Z" fill="'+c+'" stroke="'+c+'" stroke-width="0.4"/>';
+  }
+  if(sheen) s+='<path d="M'+top.map(function(p){return vf(p[0])+','+vf(p[1]);}).join(' L')+'" fill="none" stroke="rgba(255,255,255,0.26)" stroke-width="1" stroke-linecap="round"/>';
+  return s;
+}
+function vLeaf(px,py,ta,side,L,col,lit){
+  if(L<=0) return '';
+  var ang=(ta-side*Math.PI/2)*0.86,deg=ang*180/Math.PI,W=L*0.6;
+  var d='M0,0 C '+vf(L*.2)+','+vf(-W)+' '+vf(L*.62)+','+vf(-W*.95)+' '+vf(L)+','+vf(-W*.08)+' C '+vf(L*.66)+','+vf(W*.3)+' '+vf(L*.28)+','+vf(W*.5)+' 0,0 Z';
+  var hi='M'+vf(L*.2)+','+vf(-W*.25)+' C '+vf(L*.36)+','+vf(-W*.72)+' '+vf(L*.6)+','+vf(-W*.62)+' '+vf(L*.84)+','+vf(-W*.14)+' C '+vf(L*.58)+','+vf(-W*.2)+' '+vf(L*.4)+','+vf(-W*.22)+' '+vf(L*.2)+','+vf(-W*.25)+' Z';
+  var vn='M2,0 Q '+vf(L*.5)+','+vf(-W*.25)+' '+vf(L*.95)+','+vf(-W*.05);
+  return '<g transform="translate('+vf(px)+','+vf(py)+') rotate('+vf(deg)+')" style="transform-box:fill-box;transform-origin:center"><path d="'+d+'" fill="'+col+'"/><path d="'+hi+'" fill="'+lit+'" opacity="0.5"/><path d="'+vn+'" fill="none" stroke="rgba(40,55,25,0.28)" stroke-width="0.8"/></g>';
+}
+function vTdrl(px,py,side,col,sc){
+  var x=0,y=0,ang=Math.PI*.5,r=6.5*sc,d='M0,0';
+  for(var k=0;k<18;k++){ang+=side*0.52;r*=0.9;x+=Math.cos(ang)*r;y+=Math.sin(ang)*r;d+=' L'+vf(x)+','+vf(y);}
+  return '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="'+vf(1.5*sc)+'" stroke-linecap="round" opacity="0.8" transform="translate('+vf(px)+','+vf(py)+')" style="transform-box:fill-box;transform-origin:center"/>';
+}
+function vFlwr(px,py,ta,side,stage,hue,hlt,sc){
+  var perp=ta-side*Math.PI/2,ox=px+Math.cos(perp)*7*sc,oy=py+Math.sin(perp)*7*sc;
+  if(stage===1){
+    var h=15*sc,ey=11*sc,ery=4.4*sc,erx=3*sc;
+    var cl='M0,'+vf(3*sc)+' C '+vf(-4.5*sc)+','+vf(-3*sc)+' '+vf(-4.5*sc)+','+vf(-12*sc)+' 0,'+vf(-h)+' C '+vf(4.5*sc)+','+vf(-12*sc)+' '+vf(4.5*sc)+','+vf(-3*sc)+' 0,'+vf(3*sc)+' Z';
+    return '<g transform="translate('+vf(ox)+','+vf(oy)+') rotate('+vf(perp*180/Math.PI+90)+')" style="transform-box:fill-box;transform-origin:center"><path d="'+cl+'" fill="#7fa055"/><ellipse cx="0" cy="'+vf(-ey)+'" rx="'+vf(erx)+'" ry="'+vf(ery)+'" fill="'+hlt+'"/></g>';
+  }
+  if(stage===2){
+    var pl='';for(var i=0;i<5;i++){var a=i*72-90;pl+='<ellipse cx="0" cy="'+vf(-7*sc)+'" rx="'+vf(3.7*sc)+'" ry="'+vf(6.6*sc)+'" fill="'+hlt+'" transform="rotate('+a+')"/>';}
+    return '<g transform="translate('+vf(ox)+','+vf(oy)+') scale(0.85)" style="transform-box:fill-box;transform-origin:center"><g>'+pl+'</g><circle r="'+vf(3.2*sc)+'" fill="#f4d28a"/></g>';
+  }
+  var bk='',fr='';
+  for(var i=0;i<5;i++){var a=i*72-90;bk+='<ellipse cx="0" cy="'+vf(-10*sc)+'" rx="'+vf(5.6*sc)+'" ry="'+vf(9.2*sc)+'" fill="'+hue+'" transform="rotate('+a+')"/>';}
+  for(var i=0;i<5;i++){var a=i*72-90+36;fr+='<ellipse cx="0" cy="'+vf(-7*sc)+'" rx="'+vf(3.7*sc)+'" ry="'+vf(6.4*sc)+'" fill="'+hlt+'" transform="rotate('+a+')"/>';}
+  return '<g transform="translate('+vf(ox)+','+vf(oy)+')" style="transform-box:fill-box;transform-origin:center"><g>'+bk+'</g><g>'+fr+'</g><circle r="'+vf(3.6*sc)+'" fill="#f6d98a"/><circle r="'+vf(1.7*sc)+'" fill="#e8a94e"/><circle cx="'+vf(-1.2*sc)+'" cy="'+vf(-1.2*sc)+'" r="'+vf(sc)+'" fill="rgba(255,255,255,0.7)"/></g>';
+}
+
+// momentum 0-3 → vine level 0-10
+function momToLevel(m){return Math.max(0,Math.min(10,Math.round(Math.max(0,m)/3*10)));}
+
+// Single-day vine SVG in W×H pixel space
+function buildVineSVG(level,W,H,prevLevel){
+  var c=_VCFG[level],sc=H/200;
+  var xS=W*0.07,xE=W*0.93,yC=H*.5;
+  var pts=[],M=44;
+  for(var i=0;i<=M;i++){
+    var t=i/M,x=xS+t*(xE-xS);
+    var y=yC+H*.11*Math.sin(t*Math.PI*2.2+0.5)+H*.025*Math.sin(t*Math.PI*5.5);
+    pts.push([x,y]);
+  }
+  var N=pts.length,wMax=(1.8+level*.42)*sc;
+  var hue=_VHUE,hlt=vLt(hue,.5);
+  var pc=(prevLevel!=null&&prevLevel!==level)?_VCFG[prevLevel]:null;
+  var ease='cubic-bezier(.34,1.4,.5,1)';
+  function grow(str,kf,dur,d){return'<g style="transform-box:fill-box;transform-origin:center;animation:'+kf+' '+dur+'s '+ease+' both;animation-delay:'+d.toFixed(2)+'s">'+str+'</g>';}
+
+  var stem=vRib(pts,function(i){var fr=i/(N-1);var env=.4+.6*Math.pow(Math.sin(Math.PI*fr),.6);return Math.max(.4,wMax*env);},function(){return c.stick;},true);
+  if(c.stubs){
+    [[.38,1],[.66,-1]].forEach(function(p){
+      var idx=Math.round(p[0]*(N-1)),side=p[1],pt=vTn(pts,idx),a=pt[2]-side*Math.PI/2;
+      stem+='<line x1="'+vf(pt[0])+'" y1="'+vf(pt[1])+'" x2="'+vf(pt[0]+Math.cos(a)*9*sc)+'" y2="'+vf(pt[1]+Math.sin(a)*9*sc)+'" stroke="'+c.stick+'" stroke-width="'+vf(2*sc)+'" stroke-linecap="round"/>';
+    });
+  }
+  var deco='',nc=0;
+  if(c.tendril>=1){var pt=vTn(pts,Math.round(.5*(N-1)));var str=vTdrl(pt[0],pt[1],1,c.leaf,sc);deco+=(!pc||pc.tendril<1)?grow(str,'vgrow',1.0,.05):str;}
+  if(c.tendril>=2){var pt=vTn(pts,Math.round(.74*(N-1)));var str=vTdrl(pt[0],pt[1],-1,c.leaf,sc);deco+=(!pc||pc.tendril<2)?grow(str,'vgrow',1.0,.12):str;}
+  _VLA.slice(0,c.leaves).forEach(function(an,k){
+    var pt=vTn(pts,Math.round(an.u*(N-1)));
+    var str=vLeaf(pt[0],pt[1],pt[2],an.side,24*c.leafScale*an.s*sc,c.leaf,c.leafLight);
+    var isNew=pc&&k>=pc.leaves;
+    deco+=isNew?grow(str,'vgrow',1.0,.05+(nc++)*0.13):str;
+  });
+  if(c.flower>0){
+    _VFA.slice(0,c.flowerCount).forEach(function(an,k){
+      var pt=vTn(pts,Math.round(an.u*(N-1)));
+      var str=vFlwr(pt[0],pt[1],pt[2],an.side,c.flower,hue,hlt,sc);
+      var isNew=pc&&(k>=pc.flowerCount||c.flower!==pc.flower);
+      deco+=isNew?grow(str,'vgrowf',1.1,.1+(nc++)*0.13):str;
+    });
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="display:block;overflow:visible">'+stem+deco+'</svg>';
+}
+
+// Week-strip vine SVG: 7 day levels, W×H space, RTL for odd weeks, optional start clip
+function buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx){
+  var mg=8,seg=(W-2*mg)/7,yC=H*.5,wob=H*.11,sc=H/200;
+  var pts=[],owner=[],SPD=16;
+  for(var i=0;i<=7*SPD;i++){
+    var fr=i/(7*SPD),lx=mg+fr*(W-2*mg);
+    var localAll=fr*7,dInRow=Math.min(6,Math.floor(localAll)),localFr=localAll-dInRow;
+    var k=1+Math.floor(vSd(dInRow*3+1)*3);
+    var amp=wob*(.7+vSd(dInRow*3+2)*1.4);
+    var bow=vSd(dInRow*3+3)<.5?1:-1;
+    var y=yC+bow*amp*Math.sin(localFr*Math.PI*k);
+    pts.push([rtl?(W-lx):lx,y]);
+    owner.push(rtl?6-dInRow:dInRow);
+  }
+  var N=pts.length,hue=_VHUE,hlt=vLt(hue,.5);
+  var warr=[],cr=[],cg=[],cb=[];
+  for(var i=0;i<N;i++){
+    var d=owner[i],L=Math.max(0,Math.min(10,dayLevels[d]||0));
+    warr.push((1.8+L*.42)*sc);
+    var rgb=vRgb(_VCFG[L].stick);cr.push(rgb[0]);cg.push(rgb[1]);cb.push(rgb[2]);
+  }
+  for(var i=0;i<N;i++){var eo=Math.min(i,N-1-i);warr[i]*=Math.min(1,.42+eo/9*.58);}
+  warr=vSm(warr,7);cr=vSm(cr,5);cg=vSm(cg,5);cb=vSm(cb,5);
+  var stem=vRib(pts,function(i){return Math.max(.4,warr[i]);},function(i){return'rgb('+Math.round(cr[i])+','+Math.round(cg[i])+','+Math.round(cb[i])+')';},true);
+  var ranges={};
+  for(var i=0;i<N;i++){var d=owner[i];if(!ranges[d])ranges[d]=[i,i];else ranges[d][1]=i;}
+  var deco='';
+  for(var d=0;d<7;d++){
+    var L=Math.max(0,Math.min(10,dayLevels[d]||0));
+    if(L===0||!ranges[d]) continue;
+    var c=_VCFG[L],rg=ranges[d],ra=rg[0],rb=rg[1];
+    var leafSc=sc*1.4,nL=Math.min(c.leaves,3);
+    for(var k=0;k<nL;k++){
+      var fr=(k+.5)/Math.max(nL,1),idx=Math.round(ra+(rb-ra)*fr),side=k%2===0?1:-1;
+      var pt=vTn(pts,idx);
+      deco+=vLeaf(pt[0],pt[1],pt[2],side,24*c.leafScale*.85*leafSc,c.leaf,c.leafLight);
+    }
+    if(c.tendril>=1&&nL>=3){
+      var pt=vTn(pts,Math.round(ra+(rb-ra)*.5));
+      deco+=vTdrl(pt[0],pt[1],d%2===0?1:-1,c.leaf,sc*.75);
+    }
+    if(c.flower>0){
+      var pt=vTn(pts,Math.round(ra+(rb-ra)*.65));
+      deco+=vFlwr(pt[0],pt[1],pt[2],d%2===0?-1:1,c.flower,hue,hlt,sc*.8);
+    }
+  }
+  var clipId='vc'+Math.round(W)+'_'+startDayIdx,clipDefs='',clipAttr='';
+  if(startDayIdx>0){
+    var clipX=startDayIdx*(W/7);
+    clipDefs='<defs><clipPath id="'+clipId+'"><rect x="'+vf(clipX)+'" y="'+vf(-H)+'" width="'+vf(W)+'" height="'+vf(H*3)+'"/></clipPath></defs>';
+    clipAttr=' clip-path="url(#'+clipId+')"';
+  }
+  return '<svg viewBox="0 0 '+vf(W)+' '+vf(H)+'" width="'+vf(W)+'" height="'+vf(H)+'" style="display:block;overflow:visible">'+clipDefs+'<g'+clipAttr+'>'+stem+deco+'</g></svg>';
+}
+
+var _mobVineKey='';
 function drawMobVine(){
   if(!isMobile()) return;
-  var cv=document.getElementById('mobVineCanvas');
-  if(!cv||!cv.parentElement) return;
-  var W=cv.parentElement.clientWidth||window.innerWidth;
+  var el=document.getElementById('mobVineEl');
+  if(!el) return;
+  var W=el.clientWidth||window.innerWidth;
   var H=140;
-  var dpr=window.devicePixelRatio||1;
-  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){
-    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
-    cv.style.width=W+'px'; cv.style.height=H+'px';
-  }
-  var ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
   var iso=getMobISO();
-  var baselineY=H-22;
-  drawColumnVine(ctx,{left:-10,top:0,width:W+20,height:H},{left:0,top:0},iso,vineT,0,baselineY,baselineY);
+  var lvl;
+  if(iso>TODAY_ISO) lvl=0;
+  else if(iso===TODAY_ISO) lvl=momToLevel(S.momentum||0);
+  else lvl=momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
+  var prevLvl=parseInt(el.dataset.lvl||'-1',10);
+  el.dataset.lvl=lvl;
+  el.innerHTML=buildVineSVG(lvl,W,H,prevLvl>=0&&prevLvl!==lvl?prevLvl:null);
 }
 
 function drawMobWeather(){
@@ -3383,93 +3560,17 @@ function getCalWeeks(yr,mo){
   return weeks;
 }
 
-function drawCalVineStrip(canvas,weekDates,weekIdx,startDayIdx){
-  var W=canvas.parentElement?canvas.parentElement.clientWidth||window.innerWidth:window.innerWidth;
+function drawCalVineStrip(el,weekDates,weekIdx,startDayIdx){
+  if(!el) return;
+  var W=el.parentElement?el.parentElement.clientWidth||window.innerWidth:window.innerWidth;
   var H=52;
-  var dpr=window.devicePixelRatio||1;
-  if(canvas.width!==Math.round(W*dpr)||canvas.height!==Math.round(H*dpr)){
-    canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
-    canvas.style.width=W+'px'; canvas.style.height=H+'px';
-  }
-  var ctx=canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-
-  // collect day states from dailyLog (momentum 0-3), skip future days
-  var dayStates=[];
-  var maxState=0;
   var todayStr=new Date().toISOString().slice(0,10);
-  for(var d=0;d<7;d++){
-    var iso=weekDates[d];
-    var st=0;
-    if(iso&&iso<=todayStr){
-      st=(S.dailyLog&&S.dailyLog[iso])?Math.max(0,S.dailyLog[iso].momentum||0):0;
-    }
-    dayStates.push(st);
-    if(st>maxState) maxState=st;
-  }
-
+  var dayLevels=weekDates.map(function(iso){
+    if(!iso||iso>todayStr) return 0;
+    return momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
+  });
   var rtl=weekIdx%2===1;
-  var y=H*0.52;
-  var mg=10;
-  var sx=rtl?W-mg:mg, ex=rtl?mg:W-mg;
-  var wave=Math.sin(vineT*0.45+weekIdx*1.2)*6;
-  var cp1x=sx+(ex-sx)*0.3, cp1y=y-wave;
-  var cp2x=sx+(ex-sx)*0.7, cp2y=y+wave;
-
-  var vineCol=getComputedStyle(document.documentElement).getPropertyValue('--vine').trim()||'#4a6f40';
-
-  ctx.save();
-  // clip to active portion only (startDayIdx >= 0 means vine begins at that column)
-  if(startDayIdx>0){
-    ctx.beginPath();
-    ctx.rect(startDayIdx*(W/7),0,W-startDayIdx*(W/7),H);
-    ctx.clip();
-  }
-
-  // stem — thickness driven by week's max day state
-  var stemW=2+maxState*1.8; // 2px at state 0, up to 7.4px at state 3
-  ctx.strokeStyle=vineCol;
-  ctx.lineWidth=stemW;
-  ctx.lineCap='round';
-  ctx.lineJoin='round';
-  ctx.beginPath();
-  ctx.moveTo(sx,y);
-  ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,ex,y);
-  ctx.stroke();
-
-  // leaves at active days
-  for(var d2=0;d2<7;d2++){
-    var st2=dayStates[d2];
-    if(st2===0||!weekDates[d2]) continue;
-    var t=(d2+0.5)/7;
-    if(rtl) t=1-t;
-    var mt=1-t;
-    var px=mt*mt*mt*sx+3*mt*mt*t*cp1x+3*mt*t*t*cp2x+t*t*t*ex;
-    var py=mt*mt*mt*y+3*mt*mt*t*cp1y+3*mt*t*t*cp2y+t*t*t*y;
-
-    var leafSz=11+st2*2.5;  // 13.5 at 1, 16 at 2, 18.5 at 3
-    var age=st2/3;
-    var wobble=Math.sin(vineT*0.4+d2*1.1)*0.22;
-    var sideAngle=d2%2===0?-0.3:0.3;
-
-    // upper leaf (always shown for state >= 1)
-    drawLeaf(ctx,px,py,leafSz,sideAngle+wobble,age);
-
-    // lower leaf (state 2+)
-    if(st2>=2){
-      drawLeaf(ctx,px,py,leafSz*0.78,Math.PI+(sideAngle*-0.8)-wobble,age*0.9);
-    }
-
-    // extra side leaf + tendril (state 3)
-    if(st2===3){
-      drawLeaf(ctx,px,py,leafSz*0.55,-Math.PI*0.55+wobble*1.2,age*0.8);
-      if(typeof drawTendril==='function'){
-        drawTendril(ctx,px+(d2%2===0?8:-8),py-3,leafSz*0.38,1.2,wobble*2);
-      }
-    }
-  }
-  ctx.restore();
+  el.innerHTML=buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx>0?startDayIdx:-1);
 }
 
 function renderMobCal(){
@@ -3515,13 +3616,13 @@ function renderMobCal(){
       }
       var vRow=document.createElement('div');
       vRow.className='mob-cal-vinerow';
-      var vc=document.createElement('canvas');
-      vRow.appendChild(vc);
+      var vDiv=document.createElement('div');
+      vRow.appendChild(vDiv);
       wDiv.appendChild(vRow);
       body.appendChild(wDiv);
-      (function(canvas,dates,idx,start){
-        requestAnimationFrame(function(){ drawCalVineStrip(canvas,dates,idx,start); });
-      })(vc,weekDates,wi,startDayIdx);
+      (function(el,dates,idx,start){
+        requestAnimationFrame(function(){ drawCalVineStrip(el,dates,idx,start); });
+      })(vDiv,weekDates,wi,startDayIdx);
     } else {
       body.appendChild(wDiv);
     }
@@ -3700,7 +3801,7 @@ function initMobile(){
   }
 
   // Vine tap → open calendar
-  var vineCanvas=document.getElementById('mobVineCanvas');
+  var vineCanvas=document.getElementById('mobVineEl');
   if(vineCanvas){
     var vtStartX=0,vtStartY=0;
     vineCanvas.addEventListener('touchstart',function(e){
