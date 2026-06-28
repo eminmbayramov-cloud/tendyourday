@@ -89,6 +89,8 @@ header{height:52px;padding:0 16px;background:#faf8f4;display:flex;align-items:ce
 .dc-tasks::-webkit-scrollbar{width:2px}
 /* vine body: fills remaining column below tasks, canvas draws here */
 .dc-body{flex-shrink:0;position:relative;height:45vh;min-height:0}
+.dc-vine{position:absolute;bottom:0;left:0;right:0;height:140px;pointer-events:none;overflow:visible}
+.dc-vine svg{display:block}
 .dc.over .dh,.dc.over .dc-tasks{background:rgba(228,239,218,0.92)!important;border-color:var(--e-tx)!important}
 /* future columns with no tasks: bare text header only */
 .dc.dc-empty .dh{background:transparent;border:none;border-radius:0;opacity:.55}
@@ -2630,17 +2632,32 @@ function drawHistVine(){
 })();
 
 // ── Main vine canvas ──
+// Place/update the SVG vine overlay inside a desktop day column body
+function updateColVineSVG(body,dayISO){
+  var vineEl=body.querySelector('.dc-vine');
+  if(!vineEl){
+    vineEl=document.createElement('div');
+    vineEl.className='dc-vine';
+    body.appendChild(vineEl);
+  }
+  var level=getDayVineLevel(dayISO);
+  var key=dayISO+'_'+level;
+  if(vineEl.dataset.key===key) return;
+  vineEl.dataset.key=key;
+  var W=body.clientWidth||160;
+  vineEl.innerHTML=buildVineSVG(level,W,140,null,dayISO);
+}
+
 function drawDayVine(t){
   var cv=document.getElementById('vineCanvas'); if(!cv) return;
   var pw=cv.offsetWidth||window.innerWidth, ph=cv.offsetHeight||Math.round(window.innerHeight*0.45);
   if(cv.width!==pw) cv.width=pw;
   if(cv.height!==ph) cv.height=ph;
   var ctx=cv.getContext('2d');
-
   ctx.clearRect(0,0,pw,ph);
   ctx.lineCap='round'; ctx.lineJoin='round';
 
-  var VINE_BASELINE_Y=ph-40;
+  var VINE_BASELINE_Y=ph-70;
   var canvasRect=cv.getBoundingClientRect();
 
   var cols=document.querySelectorAll('.dc');
@@ -2650,17 +2667,22 @@ function drawDayVine(t){
   cols.forEach(function(col){
     var dayISO=col.dataset.day; if(!dayISO) return;
     var body=col.querySelector('.dc-body'); if(!body) return;
-    colData.push({col:col,dayISO:dayISO,bodyRect:body.getBoundingClientRect()});
+    colData.push({col:col,dayISO:dayISO,bodyRect:body.getBoundingClientRect(),body:body});
   });
   if(!colData.length) return;
 
+  // Update SVG vine overlay for each column
+  colData.forEach(function(cd){ updateColVineSVG(cd.body,cd.dayISO); });
+
+  // Bridge from history panel to first column
   var histTip=window.historyVineTip;
   var kY=histTip?(histTip.pageY-canvasRect.top):VINE_BASELINE_Y;
   var histPanel=document.querySelector('.hist-panel');
   var bridgeStartX=histPanel?(histPanel.getBoundingClientRect().right-canvasRect.left):0;
   var col0Left=colData[0].bodyRect.left-canvasRect.left;
+  var c0Lvl=getDayVineLevel(colData[0].dayISO);
 
-  ctx.strokeStyle='#5c8a3c'; ctx.lineWidth=2.5; ctx.lineCap='round';
+  ctx.strokeStyle=_VCFG[c0Lvl].stick; ctx.lineWidth=2+c0Lvl*0.28; ctx.lineCap='round';
   ctx.beginPath(); ctx.moveTo(bridgeStartX,kY);
   ctx.bezierCurveTo(
     bridgeStartX+(col0Left-bridgeStartX)*0.35,kY,
@@ -2670,29 +2692,28 @@ function drawDayVine(t){
   ctx.fillStyle='#2e5228'; ctx.beginPath(); ctx.arc(col0Left,VINE_BASELINE_Y,4,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#5c8a3c'; ctx.beginPath(); ctx.arc(col0Left,VINE_BASELINE_Y,2.5,0,Math.PI*2); ctx.fill();
 
-  var connectionPoints=[];
-  var prevTip={x:col0Left,y:VINE_BASELINE_Y};
+  // Connectors between columns
   for(var ci=0;ci<colData.length;ci++){
     var cd=colData[ci];
-    var tip=drawColumnVine(ctx,cd.bodyRect,canvasRect,cd.dayISO,t,prevTip.x,prevTip.y,VINE_BASELINE_Y);
-    connectionPoints[ci]=tip;
-    cd._tip=tip; // store for highlight pass
-    if(S.momentum>=5 && Math.random()<0.05) breeze.spawn(tip.x,VINE_BASELINE_Y);
+    var bLvl=getDayVineLevel(cd.dayISO);
+    var colRight=cd.bodyRect.right-canvasRect.left;
+    var colLeft=cd.bodyRect.left-canvasRect.left;
+    if(S.momentum>=5&&Math.random()<0.05) breeze.spawn(colRight,VINE_BASELINE_Y);
     if(ci<colData.length-1){
       var nextLeft=colData[ci+1].bodyRect.left-canvasRect.left;
-      var bLvl=momToLevel(getDayMomentum(cd.dayISO));
       ctx.strokeStyle=_VCFG[bLvl].stick;
       ctx.lineWidth=2+bLvl*0.28;
       ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(tip.x,tip.y);
-      ctx.bezierCurveTo(tip.x+(nextLeft-tip.x)*0.5,tip.y,nextLeft-(nextLeft-tip.x)*0.5,VINE_BASELINE_Y,nextLeft,VINE_BASELINE_Y);
+      ctx.beginPath(); ctx.moveTo(colRight,VINE_BASELINE_Y);
+      ctx.bezierCurveTo(
+        colRight+(nextLeft-colRight)*0.5,VINE_BASELINE_Y,
+        nextLeft-(nextLeft-colRight)*0.5,VINE_BASELINE_Y,
+        nextLeft,VINE_BASELINE_Y);
       ctx.stroke();
-      prevTip={x:nextLeft,y:VINE_BASELINE_Y};
     }
   }
 
   breeze.update(ctx,S.momentum);
-
   particles=particles.filter(function(p){
     p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.alpha-=0.022;
     if(p.alpha<=0) return false;
@@ -2703,21 +2724,17 @@ function drawDayVine(t){
   ctx.globalAlpha=1;
   drawAnims(ctx);
 
-  // Second pass: highlight selected pulse/echo task's completed days (over everything)
+  // Highlight selected task chain: tinted rect over each matched column vine
   if(selectedTaskId){
     var hlChain=getSelectedChain();
     if(hlChain&&hlChain.length){
       colData.forEach(function(cd){
         if(hlChain.indexOf(cd.dayISO)<0) return;
-        var vp=cd._tip; if(!vp||!vp.p0) return;
+        var x=cd.bodyRect.left-canvasRect.left;
+        var w=cd.bodyRect.width;
         ctx.save();
-        ctx.strokeStyle='rgba(255,180,40,0.75)';
-        ctx.lineWidth=(vp.state>=5?18:12);
-        ctx.lineCap='round';
-        ctx.globalAlpha=0.5;
-        ctx.beginPath(); ctx.moveTo(vp.p0.x,vp.p0.y);
-        ctx.bezierCurveTo(vp.cp1.x,vp.cp1.y,vp.cp2.x,vp.cp2.y,vp.p3.x,vp.p3.y);
-        ctx.stroke();
+        ctx.fillStyle='rgba(255,180,40,0.2)';
+        ctx.fillRect(x+2,VINE_BASELINE_Y-50,w-4,80);
         ctx.restore();
       });
     }
@@ -3007,6 +3024,19 @@ function getDayMomentum(iso){
   if(iso===TODAY_ISO) return S.momentum||0;
   return (S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0;
 }
+// Vine level 0-10 derived from task completions: easy=+1, med=+2, hard=+3, capped at 10
+function getDayVineLevel(iso){
+  if(!iso||iso>TODAY_ISO) return 0;
+  var done=S.tasks.filter(function(t){ return t.day===iso&&t.done&&t.recType!=='pulse'; });
+  var pulseComps=(S.completions||[]).filter(function(c){ return c.date===iso; });
+  var score=0;
+  done.forEach(function(t){ score+=BOOST[nd(t.diff)]||1; });
+  pulseComps.forEach(function(c){
+    var pt=S.tasks.find(function(x){ return x.id===c.taskId; });
+    if(pt) score+=BOOST[nd(pt.diff)]||1;
+  });
+  return Math.min(10,score);
+}
 
 // Single-day vine SVG in W×H pixel space
 function buildVineSVG(level,W,H,prevLevel,dateISO){
@@ -3121,10 +3151,7 @@ function drawMobVine(){
   var W=el.clientWidth||window.innerWidth;
   var H=140;
   var iso=getMobISO();
-  var lvl;
-  if(iso>TODAY_ISO) lvl=0;
-  else if(iso===TODAY_ISO) lvl=momToLevel(S.momentum||0);
-  else lvl=momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
+  var lvl=getDayVineLevel(iso);
   var prevLvl=parseInt(el.dataset.lvl||'-1',10);
   el.dataset.lvl=lvl;
   el.innerHTML=buildVineSVG(lvl,W,H,prevLvl>=0&&prevLvl!==lvl?prevLvl:null,iso);
@@ -3580,7 +3607,7 @@ function drawCalVineStrip(el,weekDates,weekIdx,startDayIdx){
   var todayStr=new Date().toISOString().slice(0,10);
   var dayLevels=weekDates.map(function(iso){
     if(!iso||iso>todayStr) return 0;
-    return momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
+    return getDayVineLevel(iso);
   });
   var rtl=weekIdx%2===1;
   var ws=weekDates[0]?parseInt(weekDates[0].replace(/-/g,''),10)*0.0001:0;
