@@ -387,7 +387,7 @@ body.auth-gate #momCanvas{display:none}
   #mobCalScroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
   .mob-cal-dnames{display:grid;grid-template-columns:repeat(7,1fr);padding:5px 0 4px;border-bottom:1px solid var(--bdr);background:var(--surf2)}
   .mob-cal-dnames span{text-align:center;font-size:9px;font-weight:600;color:var(--fnt);letter-spacing:.5px;text-transform:uppercase}
-  .mob-cal-week{border-bottom:1px solid rgba(0,0,0,.04)}
+  .mob-cal-week{border-bottom:1px solid rgba(0,0,0,.04);display:flex;flex-direction:column}
   .mob-cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
   .mob-cal-day{text-align:center;font-size:13px;color:var(--txt);padding:5px 0 4px;position:relative;-webkit-tap-highlight-color:transparent;user-select:none}
   .mob-cal-day.cal-today{font-weight:700;color:var(--vine)}
@@ -395,7 +395,7 @@ body.auth-gate #momCanvas{display:none}
   .mob-cal-day.cal-other{opacity:.28}
   .mob-cal-day.cal-tap{cursor:pointer}
   .mob-cal-day.cal-tap:active{opacity:.5}
-  .mob-cal-vinerow{width:100%;overflow:visible}
+  .mob-cal-vinerow{width:100%;overflow:visible;height:44px;flex-shrink:0;box-sizing:content-box}
   .mob-cal-vinerow svg{display:block}
   .mob-cal-tip{text-align:center;font-size:11px;color:var(--fnt);padding:18px 0 12px;opacity:.6;letter-spacing:.3px}
 }
@@ -2196,10 +2196,10 @@ function drawTaperedStem(ctx,pts,baseW,tipW,col1,col2){
 }
 
 // ── 3-lobe ivy leaf with veins ──
-function drawLeaf(ctx,x,y,size,angle,ageNorm){
+function drawLeaf(ctx,x,y,size,angle,ageNorm,fillColor,lightColor){
   ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
   var h=size;
-  ctx.fillStyle='hsl('+(100-ageNorm*15)+','+(65-ageNorm*20)+'%,'+(42+ageNorm*8)+'%)';
+  ctx.fillStyle=fillColor||('hsl('+(100-ageNorm*15)+','+(65-ageNorm*20)+'%,'+(42+ageNorm*8)+'%)');
   ctx.beginPath(); ctx.moveTo(0,0);
   ctx.bezierCurveTo(-h*0.28,-h*0.45,-h*0.32,-h*0.88,0,-h);
   ctx.bezierCurveTo(h*0.32,-h*0.88,h*0.28,-h*0.45,0,0); ctx.fill();
@@ -2221,12 +2221,12 @@ function drawLeaf(ctx,x,y,size,angle,ageNorm){
 }
 
 // ── Archimedean spiral tendril ──
-function drawTendril(ctx,cx,cy,maxRadius,turns,startAngle){
+function drawTendril(ctx,cx,cy,maxRadius,turns,startAngle,color){
   ctx.save(); ctx.lineCap='round';
   for(var i=0;i<120;i++){
     var t0=i/120,t1=(i+1)/120;
     var a0=startAngle+t0*turns*Math.PI*2,a1=startAngle+t1*turns*Math.PI*2;
-    ctx.strokeStyle='rgba(74,111,64,0.65)';
+    ctx.strokeStyle=color||'rgba(74,111,64,0.65)';
     ctx.lineWidth=Math.max(0.05,1.5*(1-i/120));
     ctx.beginPath();
     ctx.moveTo(cx+Math.cos(a0)*maxRadius*t0,cy+Math.sin(a0)*maxRadius*t0);
@@ -2320,7 +2320,8 @@ function drawAnims(ctx){
 
 // ── Horizontal vine per day column ──
 function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY){
-  var state=getDayState(dayISO);
+  var level=dayISO>TODAY_ISO?0:momToLevel(getDayMomentum(dayISO));
+  var c=_VCFG[level];
   var isFuture=dayISO>TODAY_ISO;
   var isToday=dayISO===TODAY_ISO;
 
@@ -2342,11 +2343,11 @@ function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY)
     return {x:bLeft+bW-6,y:baselineY,p0:null,state:-1};
   }
 
-  if(state<=0){
+  if(level===0){
     var stickLen=bW*0.22;
     var dryEndX=Math.min(bLeft+bW-margin,startX+stickLen);
     ctx.save(); ctx.globalAlpha=0.6;
-    ctx.strokeStyle='#8B6914'; ctx.lineWidth=3.2; ctx.lineCap='round';
+    ctx.strokeStyle=c.stick; ctx.lineWidth=3.2; ctx.lineCap='round';
     var steps=8;
     ctx.beginPath(); ctx.moveTo(startX,startY);
     for(var i=1;i<=steps;i++){
@@ -2357,8 +2358,7 @@ function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY)
     return {x:dryEndX,y:baselineY,p0:null,state:0};
   }
 
-  var fracs=[0,0.35,0.65,1.0];
-  var frac=fracs[Math.min(3,state)];
+  var frac=0.1+(level/10)*0.9;
   var vineEndX=bLeft+margin+(bW-margin*2)*frac;
   var endY=baselineY+(seedRand(seed,3)-0.5)*bH*0.2;
 
@@ -2371,49 +2371,51 @@ function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY)
   var cp2={x:startX+dx*0.67,y:cp2Y};
   var p3={x:vineEndX,y:endY};
 
-  if(state>=2){
+  if(level>=3){
     var pts=sampleCubic(p0,cp1,cp2,p3,30);
-    var bw=state===3?18:11, tw=state===3?6:5;
-    var c1=state===3?'#3d7020':'#4a8a2e';
-    var c2='#6db84a';
-    drawTaperedStem(ctx,pts,bw,tw,c1,c2);
-    if(state===3){
+    var bw=3+level*1.5, tw=1+level*0.5;
+    drawTaperedStem(ctx,pts,bw,tw,c.stick,c.leafLight);
+    if(level>=7){
       ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=4; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(p0.x,p0.y-1);
       ctx.bezierCurveTo(cp1.x,cp1.y-1,cp2.x,cp2.y-1,p3.x,p3.y-1); ctx.stroke(); ctx.restore();
     }
   } else {
-    ctx.save(); ctx.strokeStyle='#7ab84e'; ctx.lineWidth=5.6; ctx.lineCap='round';
+    ctx.save(); ctx.strokeStyle=c.stick; ctx.lineWidth=3+level*0.8; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(p0.x,p0.y);
     ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,p3.x,p3.y); ctx.stroke(); ctx.restore();
   }
 
-  var numLeaves=[0,3,7,12][state];
+  var numLeaves=Math.min(c.leaves,10);
   for(var l=0;l<numLeaves;l++){
     var lt=0.08+l*(0.84/Math.max(1,numLeaves-1));
     var lp=bezierPoint(p0,cp1,cp2,p3,lt);
     var up=l%2===0;
     var baseAng=up?-Math.PI/2:Math.PI/2;
     var vary=(seedRand(seed,l+30)-0.5)*0.4;
-    var ls=(state>=3?22:state>=2?17:10)+seedRand(seed,l+40)*4;
-    drawLeaf(ctx,lp.x,lp.y,ls,baseAng+vary,l/numLeaves);
+    var ls=(8+level*1.5)*c.leafScale+seedRand(seed,l+40)*4;
+    drawLeaf(ctx,lp.x,lp.y,Math.max(4,ls),baseAng+vary,level/10,c.leaf,c.leafLight);
   }
 
-  var numTendrils=[0,0,1,3][state];
+  var numTendrils=c.tendril;
   for(var td=0;td<numTendrils;td++){
     var tlt=Math.min(1,0.4+td*0.25);
     var tdp=bezierPoint(p0,cp1,cp2,p3,tlt);
     var startAng=(td%2===0?-1:1)*Math.PI*0.35+t*0.15;
-    drawTendril(ctx,tdp.x,tdp.y,17,1.5,startAng);
+    drawTendril(ctx,tdp.x,tdp.y,17,1.5,startAng,c.leaf+'aa');
   }
 
-  if(state>=3){
-    if(S.momentum>=8){
-      drawCherryBlossom(ctx,p3.x-4,p3.y-11,9,Math.PI*0.1);
-      drawCherryBlossom(ctx,p3.x+5,p3.y+9,7,Math.PI*0.3);
-    } else {
-      drawFlower(ctx,p3.x-4,p3.y-11,6);
-      drawFlower(ctx,p3.x+5,p3.y+9,5);
+  if(c.flower>0){
+    var fc=Math.min(c.flowerCount,3);
+    for(var fi=0;fi<fc;fi++){
+      var fp=bezierPoint(p0,cp1,cp2,p3,Math.min(1,0.5+fi*0.22));
+      if(c.flower>=3){
+        drawCherryBlossom(ctx,fp.x,fp.y-10,8+fi,Math.PI*0.1*fi);
+      } else if(c.flower>=2){
+        drawCherryBlossom(ctx,fp.x,fp.y-9,6,Math.PI*0.15*fi);
+      } else {
+        drawFlower(ctx,fp.x,fp.y-8,5);
+      }
     }
   }
 
@@ -2422,7 +2424,7 @@ function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY)
     g.addColorStop(0,'rgba(90,158,61,0.32)'); g.addColorStop(1,'rgba(90,158,61,0)');
     ctx.fillStyle=g; ctx.beginPath(); ctx.arc(startX,startY,16,0,Math.PI*2); ctx.fill();
 
-    if(state>=2 && S.momentum>=7){
+    if(level>=3 && S.momentum>=7){
       var shimmerAlpha=(S.momentum-7)/3*0.3;
       var midP=bezierPoint(p0,cp1,cp2,p3,0.5);
       var shimmerR=(vineEndX-startX)*0.55+20;
@@ -2457,7 +2459,7 @@ function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY)
   }
 
   // Return bezier path info for second-pass highlight rendering in drawDayVine
-  return {x:p3.x,y:p3.y,p0:p0,cp1:cp1,cp2:cp2,p3:p3,state:state};
+  return {x:p3.x,y:p3.y,p0:p0,cp1:cp1,cp2:cp2,p3:p3,state:level};
 }
 
 // ── History vine: bottom-right entry, curls upward ──
@@ -2678,9 +2680,9 @@ function drawDayVine(t){
     if(S.momentum>=5 && Math.random()<0.05) breeze.spawn(tip.x,VINE_BASELINE_Y);
     if(ci<colData.length-1){
       var nextLeft=colData[ci+1].bodyRect.left-canvasRect.left;
-      var bState=Math.max(getDayState(cd.dayISO),0);
-      ctx.strokeStyle=['#b0a090','#5a9e3d','#4a8a2e','#3d7020'][Math.min(3,bState)];
-      ctx.lineWidth=[2.4,3.2,4,4.8][Math.min(3,bState)];
+      var bLvl=momToLevel(getDayMomentum(cd.dayISO));
+      ctx.strokeStyle=_VCFG[bLvl].stick;
+      ctx.lineWidth=2+bLvl*0.28;
       ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(tip.x,tip.y);
       ctx.bezierCurveTo(tip.x+(nextLeft-tip.x)*0.5,tip.y,nextLeft-(nextLeft-tip.x)*0.5,VINE_BASELINE_Y,nextLeft,VINE_BASELINE_Y);
@@ -2710,7 +2712,7 @@ function drawDayVine(t){
         var vp=cd._tip; if(!vp||!vp.p0) return;
         ctx.save();
         ctx.strokeStyle='rgba(255,180,40,0.75)';
-        ctx.lineWidth=(vp.state>=2?18:12);
+        ctx.lineWidth=(vp.state>=5?18:12);
         ctx.lineCap='round';
         ctx.globalAlpha=0.5;
         ctx.beginPath(); ctx.moveTo(vp.p0.x,vp.p0.y);
@@ -3001,15 +3003,25 @@ function vFlwr(px,py,ta,side,stage,hue,hlt,sc){
 
 // momentum 0-3 → vine level 0-10
 function momToLevel(m){return Math.max(0,Math.min(10,Math.round(Math.max(0,m)/3*10)));}
+function getDayMomentum(iso){
+  if(iso===TODAY_ISO) return S.momentum||0;
+  return (S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0;
+}
 
 // Single-day vine SVG in W×H pixel space
-function buildVineSVG(level,W,H,prevLevel){
+function buildVineSVG(level,W,H,prevLevel,dateISO){
   var c=_VCFG[level],sc=H/200;
   var xS=W*0.07,xE=W*0.93,yC=H*.5;
+  var ds=dateISO?parseInt(dateISO.replace(/-/g,''),10)*0.0001:17.3;
+  var amp1=H*(0.07+vSd(ds*7+1)*0.09);
+  var fr1=Math.PI*(1.8+vSd(ds*7+2)*0.7);
+  var ph1=vSd(ds*7+3)*Math.PI*2;
+  var amp2=H*(0.012+vSd(ds*7+4)*0.028);
+  var fr2=Math.PI*(4.2+vSd(ds*7+5)*2.8);
   var pts=[],M=44;
   for(var i=0;i<=M;i++){
     var t=i/M,x=xS+t*(xE-xS);
-    var y=yC+H*.11*Math.sin(t*Math.PI*2.2+0.5)+H*.025*Math.sin(t*Math.PI*5.5);
+    var y=yC+amp1*Math.sin(t*fr1+ph1)+amp2*Math.sin(t*fr2);
     pts.push([x,y]);
   }
   var N=pts.length,wMax=(1.8+level*.42)*sc;
@@ -3046,15 +3058,16 @@ function buildVineSVG(level,W,H,prevLevel){
 }
 
 // Week-strip vine SVG: 7 day levels, W×H space, RTL for odd weeks, optional start clip
-function buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx){
+function buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx,wSeed){
   var mg=8,seg=(W-2*mg)/7,yC=H*.5,wob=H*.11,sc=H/200;
+  var ws=(wSeed||0)*53.1;
   var pts=[],owner=[],SPD=16;
   for(var i=0;i<=7*SPD;i++){
     var fr=i/(7*SPD),lx=mg+fr*(W-2*mg);
     var localAll=fr*7,dInRow=Math.min(6,Math.floor(localAll)),localFr=localAll-dInRow;
-    var k=1+Math.floor(vSd(dInRow*3+1)*3);
-    var amp=wob*(.7+vSd(dInRow*3+2)*1.4);
-    var bow=vSd(dInRow*3+3)<.5?1:-1;
+    var k=1+Math.floor(vSd(ws+dInRow*3+1)*3);
+    var amp=wob*(.7+vSd(ws+dInRow*3+2)*1.4);
+    var bow=vSd(ws+dInRow*3+3)<.5?1:-1;
     var y=yC+bow*amp*Math.sin(localFr*Math.PI*k);
     pts.push([rtl?(W-lx):lx,y]);
     owner.push(rtl?6-dInRow:dInRow);
@@ -3114,7 +3127,7 @@ function drawMobVine(){
   else lvl=momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
   var prevLvl=parseInt(el.dataset.lvl||'-1',10);
   el.dataset.lvl=lvl;
-  el.innerHTML=buildVineSVG(lvl,W,H,prevLvl>=0&&prevLvl!==lvl?prevLvl:null);
+  el.innerHTML=buildVineSVG(lvl,W,H,prevLvl>=0&&prevLvl!==lvl?prevLvl:null,iso);
 }
 
 function drawMobWeather(){
@@ -3570,7 +3583,8 @@ function drawCalVineStrip(el,weekDates,weekIdx,startDayIdx){
     return momToLevel((S.dailyLog&&S.dailyLog[iso])?S.dailyLog[iso].momentum||0:0);
   });
   var rtl=weekIdx%2===1;
-  el.innerHTML=buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx>0?startDayIdx:-1);
+  var ws=weekDates[0]?parseInt(weekDates[0].replace(/-/g,''),10)*0.0001:0;
+  el.innerHTML=buildWeekVineSVG(dayLevels,W,H,rtl,startDayIdx>0?startDayIdx:-1,ws);
 }
 
 function renderMobCal(){
@@ -3604,27 +3618,24 @@ function renderMobCal(){
     // determine vine visibility for this week
     var realDays=weekDates.filter(function(d){ return d!==''; });
     var weekFirst=realDays[0]||'', weekLast=realDays[realDays.length-1]||'';
-    // skip vine entirely if the whole week is before first use
     var showVine=!firstUse||weekLast>=firstUse;
-    if(showVine){
-      // find startDayIdx if firstUse falls within this week
-      var startDayIdx=-1;
-      if(firstUse&&weekFirst<=firstUse&&firstUse<=weekLast){
-        for(var d=0;d<7;d++){
-          if(weekDates[d]===firstUse){ startDayIdx=d; break; }
-        }
+    var startDayIdx=-1;
+    if(showVine&&firstUse&&weekFirst<=firstUse&&firstUse<=weekLast){
+      for(var d=0;d<7;d++){
+        if(weekDates[d]===firstUse){ startDayIdx=d; break; }
       }
-      var vRow=document.createElement('div');
-      vRow.className='mob-cal-vinerow';
-      var vDiv=document.createElement('div');
-      vRow.appendChild(vDiv);
-      wDiv.appendChild(vRow);
-      body.appendChild(wDiv);
+    }
+    // always append vinerow so every week has identical height
+    var vRow=document.createElement('div');
+    vRow.className='mob-cal-vinerow';
+    var vDiv=document.createElement('div');
+    vRow.appendChild(vDiv);
+    wDiv.appendChild(vRow);
+    body.appendChild(wDiv);
+    if(showVine){
       (function(el,dates,idx,start){
         requestAnimationFrame(function(){ drawCalVineStrip(el,dates,idx,start); });
       })(vDiv,weekDates,wi,startDayIdx);
-    } else {
-      body.appendChild(wDiv);
     }
   });
 }
