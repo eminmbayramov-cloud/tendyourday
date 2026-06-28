@@ -2320,7 +2320,83 @@ function drawAnims(ctx){
   });
 }
 
-// ── Horizontal vine per day column ──
+// ── Shared canvas vine: identical design for mobile and desktop ──
+function drawVine(ctx,W,H,level,seed){
+  level=Math.max(0,Math.min(10,level));
+  var c=_VCFG[level],sc=H/200;
+  var xS=W*0.07,xE=W*0.93,yC=H*0.5;
+  var ds=seed?parseInt(String(seed).replace(/-/g,''),10)*0.0001:17.3;
+  var amp1=H*(0.07+vSd(ds*7+1)*0.09);
+  var fr1=Math.PI*(1.8+vSd(ds*7+2)*0.7);
+  var ph1=vSd(ds*7+3)*Math.PI*2;
+  var amp2=H*(0.012+vSd(ds*7+4)*0.028);
+  var fr2=Math.PI*(4.2+vSd(ds*7+5)*2.8);
+  var pts=[],M=44;
+  for(var i=0;i<=M;i++){
+    var t=i/M,x=xS+t*(xE-xS);
+    var y=yC+amp1*Math.sin(t*fr1+ph1)+amp2*Math.sin(t*fr2);
+    pts.push([x,y]);
+  }
+  var N=pts.length,wMax=(1.8+level*0.42)*sc;
+  if(level===0){
+    ctx.save();
+    ctx.globalAlpha=0.6;ctx.strokeStyle=c.stick;ctx.lineWidth=Math.max(0.8,2*sc);ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(var i=1;i<N;i++)ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.stroke();
+    [[0.38,1],[0.66,-1]].forEach(function(p){
+      var tn=vTn(pts,Math.round(p[0]*(N-1)));
+      var a=tn[2]-p[1]*Math.PI/2;
+      ctx.beginPath();ctx.moveTo(tn[0],tn[1]);
+      ctx.lineTo(tn[0]+Math.cos(a)*9*sc,tn[1]+Math.sin(a)*9*sc);ctx.stroke();
+    });
+    ctx.restore();
+    return;
+  }
+  var top=[],bot=[];
+  for(var i=0;i<N;i++){
+    var fr=i/(N-1);
+    var env=0.4+0.6*Math.pow(Math.sin(Math.PI*fr),0.6);
+    var w=Math.max(0.4,wMax*env);
+    var a=pts[Math.max(0,i-1)],b=pts[Math.min(N-1,i+1)];
+    var tx=b[0]-a[0],ty=b[1]-a[1],len=Math.hypot(tx,ty)||1;
+    var nx=-ty/len,ny=tx/len;
+    top.push([pts[i][0]+nx*w,pts[i][1]+ny*w]);
+    bot.push([pts[i][0]-nx*w,pts[i][1]-ny*w]);
+  }
+  ctx.save();
+  ctx.fillStyle=c.stick;
+  ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);
+  for(var i=1;i<N;i++)ctx.lineTo(top[i][0],top[i][1]);
+  for(var i=N-1;i>=0;i--)ctx.lineTo(bot[i][0],bot[i][1]);
+  ctx.closePath();ctx.fill();
+  if(level>=4){
+    ctx.strokeStyle='rgba(255,255,255,0.26)';ctx.lineWidth=1.2;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);
+    for(var i=1;i<N;i++)ctx.lineTo(top[i][0],top[i][1]);
+    ctx.stroke();
+  }
+  ctx.restore();
+  _VLA.slice(0,c.leaves).forEach(function(an){
+    var tn=vTn(pts,Math.round(an.u*(N-1)));
+    var angle=(tn[2]-an.side*Math.PI/2)*0.86;
+    var ls=Math.max(4,24*c.leafScale*an.s*sc);
+    drawLeaf(ctx,tn[0],tn[1],ls,angle,level/10,c.leaf,c.leafLight);
+  });
+  if(c.tendril>=1){var tn1=vTn(pts,Math.round(0.5*(N-1)));drawTendril(ctx,tn1[0],tn1[1],6.5*sc*3,1.5,Math.PI*0.5,c.leaf);}
+  if(c.tendril>=2){var tn2=vTn(pts,Math.round(0.74*(N-1)));drawTendril(ctx,tn2[0],tn2[1],6.5*sc*3,-1.5,-Math.PI*0.5,c.leaf);}
+  if(c.flower>0){
+    _VFA.slice(0,c.flowerCount).forEach(function(an){
+      var tn=vTn(pts,Math.round(an.u*(N-1)));
+      var perp=tn[2]-an.side*Math.PI/2;
+      var ox=tn[0]+Math.cos(perp)*7*sc,oy=tn[1]+Math.sin(perp)*7*sc;
+      if(c.flower>=2)drawCherryBlossom(ctx,ox,oy,(c.flower>=3?8:6)*sc,perp);
+      else drawFlower(ctx,ox,oy,5*sc);
+    });
+  }
+}
+
+// ── Horizontal vine per day column (legacy canvas — kept for reference) ──
 function drawColumnVine(ctx,bodyRect,panelRect,dayISO,t,startX,startY,baselineY){
   var level=dayISO>TODAY_ISO?0:momToLevel(getDayMomentum(dayISO));
   var c=_VCFG[level];
@@ -2671,8 +2747,15 @@ function drawDayVine(t){
   });
   if(!colData.length) return;
 
-  // Update SVG vine overlay for each column
-  colData.forEach(function(cd){ updateColVineSVG(cd.body,cd.dayISO); });
+  // Remove any stale SVG vine overlays and draw vine directly on canvas
+  document.querySelectorAll('.dc-vine').forEach(function(el){el.remove();});
+  colData.forEach(function(cd){
+    var bR=cd.bodyRect,cL=bR.left-canvasRect.left,cB=bR.bottom-canvasRect.top;
+    var cW=bR.width,vineH=Math.min(140,Math.round(bR.height));
+    ctx.save();ctx.translate(cL,cB-vineH);
+    drawVine(ctx,cW,vineH,getDayVineLevel(cd.dayISO),cd.dayISO);
+    ctx.restore();
+  });
 
   // Bridge from history panel to first column
   var histTip=window.historyVineTip;
@@ -3152,9 +3235,16 @@ function drawMobVine(){
   var H=140;
   var iso=getMobISO();
   var lvl=getDayVineLevel(iso);
-  var prevLvl=parseInt(el.dataset.lvl||'-1',10);
-  el.dataset.lvl=lvl;
-  el.innerHTML=buildVineSVG(lvl,W,H,prevLvl>=0&&prevLvl!==lvl?prevLvl:null,iso);
+  var key=iso+'_'+lvl;
+  if(el.dataset.key===key) return;
+  el.dataset.key=key;
+  var cv=el.querySelector('canvas');
+  if(!cv){cv=document.createElement('canvas');el.innerHTML='';el.appendChild(cv);}
+  cv.width=W;cv.height=H;
+  cv.style.cssText='display:block;width:'+W+'px;height:'+H+'px';
+  var ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  drawVine(ctx,W,H,lvl,iso);
 }
 
 function drawMobWeather(){
