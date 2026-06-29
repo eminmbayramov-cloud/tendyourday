@@ -2326,10 +2326,10 @@ function drawVine(ctx,W,H,level,seed){
   var c=_VCFG[level],sc=H/200;
   var xS=W*0.07,xE=W*0.93,yC=H*0.5;
   var ds=seed?parseInt(String(seed).replace(/-/g,''),10)*0.0001:17.3;
-  var amp1=H*(0.07+vSd(ds*7+1)*0.09);
+  var amp1=H*(0.04+vSd(ds*7+1)*0.06);
   var fr1=Math.PI*(1.8+vSd(ds*7+2)*0.7);
   var ph1=vSd(ds*7+3)*Math.PI*2;
-  var amp2=H*(0.012+vSd(ds*7+4)*0.028);
+  var amp2=H*(0.008+vSd(ds*7+4)*0.016);
   var fr2=Math.PI*(4.2+vSd(ds*7+5)*2.8);
   var pts=[],M=44;
   for(var i=0;i<=M;i++){
@@ -2556,123 +2556,136 @@ function getHistoryDates(){
 function drawHistVine(){
   var cv=document.getElementById('histVine'); if(!cv) return;
   var parent=cv.parentElement; if(!parent) return;
-  var W=parent.offsetWidth, H=parent.offsetHeight-30;
+  var W=parent.offsetWidth, H=parent.offsetHeight;
   cv.width=Math.max(1,W); cv.height=Math.max(1,H);
   var ctx=cv.getContext('2d');
-  ctx.fillStyle='#faf8f4'; ctx.fillRect(0,0,W,H);
-
-  var baselineY=window.innerHeight-40-cv.getBoundingClientRect().top;
+  ctx.clearRect(0,0,W,H);
 
   var dates=getHistoryDates();
-  window.vineHitPath=[]; // reset hit-path for tooltip
-  var histArcs=[]; // accumulate arc bezier paths for second-pass highlight
+  window.vineHitPath=[];
 
-  // Only show days with actual completions — no dry sticks for empty days
-  var visible=dates.filter(function(d){ return getDayState(d)>0; }).slice(-14).reverse();
-
-  if(!visible.length){
-    window.historyVineTip={pageY:cv.getBoundingClientRect().top+baselineY};
+  // Oldest at top, newest at bottom — descending vertical ribbon
+  var allDays=dates.slice(-20);
+  if(!allDays.length){
+    window.historyVineTip={pageY:cv.getBoundingClientRect().top+H*0.85};
     return;
   }
-  var n=visible.length;
-  var marginTop=16, margin=16;
-  // Height per segment so all n arcs fit above baselineY
-  var loopH=(baselineY-marginTop)/n;
+  var n=allDays.length;
+  var xC=W*0.52;
+  var yTop=10, yBot=H-10;
+  var segH=(yBot-yTop)/n;
+  var SPD=14;
 
-  ctx.lineCap='round'; ctx.lineJoin='round';
-
-  // Helix: starts at (W, baselineY), each arc sweeps to the opposite wall and rises
-  var sx=W, sy=baselineY;
+  // Build continuous path: each day has its own gentle x-wobble
+  // sin(0)=sin(k*pi)=0 guarantees smooth connection between segments
+  var pts=[],owner=[];
   for(var i=0;i<n;i++){
-    var goLeft=i%2===0; // seg 0 sweeps left (from right edge)
-    var nx=goLeft?margin:W-margin;
-    var ny=sy-loopH;
-    if(ny<marginTop) ny=marginTop;
-
-    var p0={x:sx,y:sy}, p3={x:nx,y:ny};
-    // cp1/cp2 pushed by 0.55×loopH — creates continuous elliptical loops (Fix 1)
-    var cp1={x:sx, y:sy-loopH*0.55};
-    var cp2={x:nx, y:ny+loopH*0.55};
-
-    var st=Math.max(0,getDayState(visible[i]));
-    var seed=dateHash(visible[i]);
-
-    // Accumulate hit-path samples (9 per arc) for hover tooltip
-    var dayLog=S.dailyLog&&S.dailyLog[visible[i]];
-    var dayMom=dayLog?dayLog.momentum:st;
-    for(var s=0;s<9;s++){
-      var sp=bezierPoint(p0,cp1,cp2,p3,s/8);
-      window.vineHitPath.push({x:sp.x,y:sp.y,date:visible[i],momentum:dayMom});
+    var iso=allDays[i];
+    var ds=parseInt(iso.replace(/-/g,''),10)*0.0001;
+    var k=1+Math.floor(vSd(ds*3+1)*3);
+    var wob=W*0.2;
+    var amp=wob*(0.4+vSd(ds*3+2)*0.8);
+    var bow=vSd(ds*3+3)<0.5?1:-1;
+    var startS=(i===0)?0:1;
+    for(var s=startS;s<=SPD;s++){
+      var fr=s/SPD;
+      var y=yTop+i*segH+fr*segH;
+      var x=xC+bow*amp*Math.sin(fr*Math.PI*k);
+      pts.push([x,y]);
+      owner.push(i);
     }
-    // Store arc for second-pass highlight rendering
-    histArcs.push({date:visible[i],p0:p0,cp1:cp1,cp2:cp2,p3:p3});
-
-    // Stem — same functions as column vine, lineWidth scaled 0.7× (Fix 2)
-    if(st>=2){
-      var pts=sampleCubic(p0,cp1,cp2,p3,20);
-      var bw=(st===3?18:11)*0.7, tw=(st===3?6:5)*0.7;
-      var c1=st===3?'#3d7020':'#4a8a2e';
-      drawTaperedStem(ctx,pts,bw,tw,c1,'#6db84a');
-      if(st===3){
-        ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2.8; ctx.lineCap='round';
-        ctx.beginPath(); ctx.moveTo(p0.x,p0.y-1);
-        ctx.bezierCurveTo(cp1.x,cp1.y-1,cp2.x,cp2.y-1,p3.x,p3.y-1); ctx.stroke(); ctx.restore();
-      }
-    } else if(st===1){
-      ctx.save(); ctx.strokeStyle='#7ab84e'; ctx.lineWidth=3.9; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(p0.x,p0.y);
-      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,p3.x,p3.y); ctx.stroke(); ctx.restore();
-    } else {
-      ctx.save(); ctx.globalAlpha=0.55; ctx.strokeStyle='#8B6914'; ctx.lineWidth=2.1; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(p0.x,p0.y);
-      ctx.bezierCurveTo(cp1.x,cp1.y,cp2.x,cp2.y,p3.x,p3.y); ctx.stroke(); ctx.restore();
-    }
-
-    // Leaves — same drawLeaf(), size scaled 0.6× vs column vine (Fix 2)
-    var numLeaves=[0,2,4,6][Math.min(3,st)];
-    for(var l=0;l<numLeaves;l++){
-      var lt=0.15+l*(0.7/Math.max(1,numLeaves-1));
-      var lp=bezierPoint(p0,cp1,cp2,p3,lt);
-      var up=l%2===0;
-      var vary=(seedRand(seed,l+30)-0.5)*0.4;
-      var ls=((st>=3?22:st>=2?17:10)+seedRand(seed,l+40)*4)*0.6;
-      drawLeaf(ctx,lp.x,lp.y,ls,(up?-Math.PI/2:Math.PI/2)+vary,l/numLeaves);
-    }
-
-    // Tendril on lush days — same drawTendril(), radius scaled 0.6× (Fix 2, no flowers)
-    if(st>=3){
-      var tp=bezierPoint(p0,cp1,cp2,p3,0.5);
-      drawTendril(ctx,tp.x,tp.y,10,1.5,Math.PI*0.3);
-    }
-
-    sx=nx; sy=ny;
   }
 
-  // Rhizome knuckle at entry (right edge, at baselineY)
-  ctx.fillStyle='#2e5228'; ctx.beginPath(); ctx.arc(W,baselineY,5,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#5c8a3c'; ctx.beginPath(); ctx.arc(W,baselineY,3,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(W-1,baselineY-1,1.2,0,Math.PI*2); ctx.fill();
+  var N=pts.length;
+  var warr=[],cr=[],cg=[],cb=[];
+  for(var i=0;i<N;i++){
+    var d=owner[i];
+    var L=getDayVineLevel(allDays[d]);
+    warr.push(1.8+L*0.42);
+    var rgb=vRgb(_VCFG[L].stick);
+    cr.push(rgb[0]);cg.push(rgb[1]);cb.push(rgb[2]);
+  }
+  for(var i=0;i<N;i++){var eo=Math.min(i,N-1-i);warr[i]*=Math.min(1,0.38+eo/8*0.62);}
+  warr=vSm(warr,7);cr=vSm(cr,5);cg=vSm(cg,5);cb=vSm(cb,5);
 
-  // Second pass: highlight completed arcs for selected pulse/echo task
+  var top=[],bot=[];
+  for(var i=0;i<N;i++){
+    var w=Math.max(0.4,warr[i]);
+    var a=pts[Math.max(0,i-1)],b=pts[Math.min(N-1,i+1)];
+    var tx=b[0]-a[0],ty=b[1]-a[1],len=Math.hypot(tx,ty)||1;
+    var nx=-ty/len,ny=tx/len;
+    top.push([pts[i][0]+nx*w,pts[i][1]+ny*w]);
+    bot.push([pts[i][0]-nx*w,pts[i][1]-ny*w]);
+  }
+  ctx.save();
+  for(var i=0;i<N-1;i++){
+    ctx.fillStyle='rgb('+Math.round(cr[i])+','+Math.round(cg[i])+','+Math.round(cb[i])+')';
+    ctx.beginPath();
+    ctx.moveTo(top[i][0],top[i][1]);ctx.lineTo(top[i+1][0],top[i+1][1]);
+    ctx.lineTo(bot[i+1][0],bot[i+1][1]);ctx.lineTo(bot[i][0],bot[i][1]);
+    ctx.closePath();ctx.fill();
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.26)';ctx.lineWidth=1;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);
+  for(var i=1;i<N;i++)ctx.lineTo(top[i][0],top[i][1]);
+  ctx.stroke();
+  ctx.restore();
+
+  // Per-day decorations and hit-path
+  var dayRanges={};
+  for(var i=0;i<N;i++){var d=owner[i];if(!dayRanges[d])dayRanges[d]=[i,i];else dayRanges[d][1]=i;}
+  var histArcs=[];
+  for(var d=0;d<n;d++){
+    var iso=allDays[d];
+    var L=getDayVineLevel(iso);
+    if(!dayRanges[d]) continue;
+    var c=_VCFG[L],ra=dayRanges[d][0],rb=dayRanges[d][1];
+    var sc=W/160;
+    var nL=Math.min(c.leaves,4);
+    for(var k=0;k<nL;k++){
+      var idx=Math.round(ra+(rb-ra)*((k+0.5)/Math.max(nL,1)));
+      var tn=vTn(pts,idx);
+      var side=k%2===0?1:-1;
+      var angle=(tn[2]-side*Math.PI/2)*0.86;
+      var ls=Math.max(3,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc);
+      drawLeaf(ctx,tn[0],tn[1],ls,angle,L/10,c.leaf,c.leafLight);
+    }
+    if(c.tendril>=1&&nL>=3){
+      var tn1=vTn(pts,Math.round(ra+(rb-ra)*0.5));
+      drawTendril(ctx,tn1[0],tn1[1],6.5*sc*2,1.5,tn1[2]+Math.PI*0.5,c.leaf);
+    }
+    if(c.flower>0){
+      var tn2=vTn(pts,Math.round(ra+(rb-ra)*0.65));
+      var perp=tn2[2]-Math.PI/2;
+      var ox=tn2[0]+Math.cos(perp)*6*sc,oy=tn2[1]+Math.sin(perp)*6*sc;
+      if(c.flower>=2)drawCherryBlossom(ctx,ox,oy,(c.flower>=3?8:6)*sc,perp);
+      else drawFlower(ctx,ox,oy,5*sc);
+    }
+    histArcs.push({date:iso,ra:ra,rb:rb});
+    for(var s=0;s<5;s++){
+      var idx=Math.round(ra+(rb-ra)*s/4);
+      window.vineHitPath.push({x:pts[idx][0],y:pts[idx][1],date:iso,momentum:L});
+    }
+  }
+
+  // Highlight selected task chain
   if(selectedTaskId){
     var hlChainH=getSelectedChain();
     if(hlChainH&&hlChainH.length){
       histArcs.forEach(function(arc){
         if(hlChainH.indexOf(arc.date)<0) return;
         ctx.save();
-        ctx.strokeStyle='rgba(255,180,40,0.75)';
-        ctx.lineWidth=8;
-        ctx.lineCap='round';
-        ctx.globalAlpha=0.6;
-        ctx.beginPath(); ctx.moveTo(arc.p0.x,arc.p0.y);
-        ctx.bezierCurveTo(arc.cp1.x,arc.cp1.y,arc.cp2.x,arc.cp2.y,arc.p3.x,arc.p3.y);
-        ctx.stroke();
-        ctx.restore();
+        ctx.strokeStyle='rgba(255,180,40,0.75)';ctx.lineWidth=8;ctx.lineCap='round';ctx.globalAlpha=0.6;
+        ctx.beginPath();ctx.moveTo(pts[arc.ra][0],pts[arc.ra][1]);
+        for(var i=arc.ra+1;i<=arc.rb;i++)ctx.lineTo(pts[i][0],pts[i][1]);
+        ctx.stroke();ctx.restore();
       });
     }
   }
 
-  window.historyVineTip={pageY:cv.getBoundingClientRect().top+baselineY};
+  // Connection point for drawDayVine bridge
+  var tipPt=pts[N-1];
+  window.historyVineTip={pageY:cv.getBoundingClientRect().top+tipPt[1]};
 }
 
 // Change 5: History vine tooltip listeners (set up once after drawHistVine is defined)
@@ -2733,9 +2746,7 @@ function drawDayVine(t){
   ctx.clearRect(0,0,pw,ph);
   ctx.lineCap='round'; ctx.lineJoin='round';
 
-  var VINE_BASELINE_Y=ph-70;
   var canvasRect=cv.getBoundingClientRect();
-
   var cols=document.querySelectorAll('.dc');
   if(!cols.length) return;
 
@@ -2747,77 +2758,133 @@ function drawDayVine(t){
   });
   if(!colData.length) return;
 
-  // Remove any stale SVG vine overlays and draw vine directly on canvas
   document.querySelectorAll('.dc-vine').forEach(function(el){el.remove();});
-  colData.forEach(function(cd){
-    var bR=cd.bodyRect,cL=bR.left-canvasRect.left,cB=bR.bottom-canvasRect.top;
-    var cW=bR.width,vineH=Math.min(140,Math.round(bR.height));
-    ctx.save();ctx.translate(cL,cB-vineH);
-    drawVine(ctx,cW,vineH,getDayVineLevel(cd.dayISO),cd.dayISO);
-    ctx.restore();
+
+  // Build one continuous vine path across all columns.
+  // Each day segment occupies its column's width; gentle y-wobble returns to
+  // baseline at endpoints (sin(0)=sin(k·π)=0) so segments connect smoothly.
+  var vineH=140, SPD=16;
+  var pts=[],owner=[];
+  colData.forEach(function(cd,ci){
+    var bR=cd.bodyRect;
+    var cL=bR.left-canvasRect.left, cR=bR.right-canvasRect.left;
+    var cW=cR-cL;
+    var segY=(bR.bottom-canvasRect.top)-vineH/2;
+    var ds=parseInt(cd.dayISO.replace(/-/g,''),10)*0.0001;
+    var k=1+Math.floor(vSd(ds*3+1)*3);
+    var wob=vineH*0.05;
+    var amp=wob*(0.6+vSd(ds*3+2)*1.0);
+    var bow=vSd(ds*3+3)<0.5?1:-1;
+    for(var s=(ci===0?0:1);s<=SPD;s++){
+      var fr=s/SPD;
+      pts.push([cL+fr*cW, segY+bow*amp*Math.sin(fr*Math.PI*k)]);
+      owner.push(ci);
+    }
   });
 
-  // Bridge from history panel to first column
-  var histTip=window.historyVineTip;
-  var kY=histTip?(histTip.pageY-canvasRect.top):VINE_BASELINE_Y;
-  var histPanel=document.querySelector('.hist-panel');
-  var bridgeStartX=histPanel?(histPanel.getBoundingClientRect().right-canvasRect.left):0;
-  var col0Left=colData[0].bodyRect.left-canvasRect.left;
-  var c0Lvl=getDayVineLevel(colData[0].dayISO);
+  var N=pts.length; if(N<2) return;
 
-  ctx.strokeStyle=_VCFG[c0Lvl].stick; ctx.lineWidth=2+c0Lvl*0.28; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(bridgeStartX,kY);
-  ctx.bezierCurveTo(
-    bridgeStartX+(col0Left-bridgeStartX)*0.35,kY,
-    bridgeStartX+(col0Left-bridgeStartX)*0.75,VINE_BASELINE_Y,
-    col0Left,VINE_BASELINE_Y);
+  // Per-point width and color blended from each day's vine level
+  var warr=[],cr=[],cg=[],cb=[];
+  for(var i=0;i<N;i++){
+    var d=owner[i];
+    var L=colData[d].dayISO>TODAY_ISO?0:getDayVineLevel(colData[d].dayISO);
+    warr.push(1.8+L*0.42);
+    var rgb=vRgb(_VCFG[L].stick);
+    cr.push(rgb[0]);cg.push(rgb[1]);cb.push(rgb[2]);
+  }
+  for(var i=0;i<N;i++){var eo=Math.min(i,N-1-i);warr[i]*=Math.min(1,0.42+eo/9*0.58);}
+  warr=vSm(warr,7);cr=vSm(cr,5);cg=vSm(cg,5);cb=vSm(cb,5);
+
+  // Ribbon stem
+  var top=[],bot=[];
+  for(var i=0;i<N;i++){
+    var w=Math.max(0.4,warr[i]);
+    var a=pts[Math.max(0,i-1)],b=pts[Math.min(N-1,i+1)];
+    var tx=b[0]-a[0],ty=b[1]-a[1],len=Math.hypot(tx,ty)||1;
+    var nx=-ty/len,ny=tx/len;
+    top.push([pts[i][0]+nx*w,pts[i][1]+ny*w]);
+    bot.push([pts[i][0]-nx*w,pts[i][1]-ny*w]);
+  }
+  for(var i=0;i<N-1;i++){
+    ctx.fillStyle='rgb('+Math.round(cr[i])+','+Math.round(cg[i])+','+Math.round(cb[i])+')';
+    ctx.beginPath();
+    ctx.moveTo(top[i][0],top[i][1]);ctx.lineTo(top[i+1][0],top[i+1][1]);
+    ctx.lineTo(bot[i+1][0],bot[i+1][1]);ctx.lineTo(bot[i][0],bot[i][1]);
+    ctx.closePath();ctx.fill();
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.26)';ctx.lineWidth=1;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(top[0][0],top[0][1]);
+  for(var i=1;i<N;i++)ctx.lineTo(top[i][0],top[i][1]);
   ctx.stroke();
-  ctx.fillStyle='#2e5228'; ctx.beginPath(); ctx.arc(col0Left,VINE_BASELINE_Y,4,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#5c8a3c'; ctx.beginPath(); ctx.arc(col0Left,VINE_BASELINE_Y,2.5,0,Math.PI*2); ctx.fill();
 
-  // Connectors between columns
+  // Day ranges for decorations
+  var dayRanges={};
+  for(var i=0;i<N;i++){var d=owner[i];if(!dayRanges[d])dayRanges[d]=[i,i];else dayRanges[d][1]=i;}
+
   for(var ci=0;ci<colData.length;ci++){
     var cd=colData[ci];
-    var bLvl=getDayVineLevel(cd.dayISO);
-    var colRight=cd.bodyRect.right-canvasRect.left;
-    var colLeft=cd.bodyRect.left-canvasRect.left;
-    if(S.momentum>=5&&Math.random()<0.05) breeze.spawn(colRight,VINE_BASELINE_Y);
-    if(ci<colData.length-1){
-      var nextLeft=colData[ci+1].bodyRect.left-canvasRect.left;
-      ctx.strokeStyle=_VCFG[bLvl].stick;
-      ctx.lineWidth=2+bLvl*0.28;
-      ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(colRight,VINE_BASELINE_Y);
-      ctx.bezierCurveTo(
-        colRight+(nextLeft-colRight)*0.5,VINE_BASELINE_Y,
-        nextLeft-(nextLeft-colRight)*0.5,VINE_BASELINE_Y,
-        nextLeft,VINE_BASELINE_Y);
-      ctx.stroke();
+    var L=cd.dayISO>TODAY_ISO?0:getDayVineLevel(cd.dayISO);
+    if(L===0||!dayRanges[ci]) continue;
+    var c=_VCFG[L],ra=dayRanges[ci][0],rb=dayRanges[ci][1],sc=vineH/200;
+    var nL=Math.min(c.leaves,5);
+    for(var k=0;k<nL;k++){
+      var idx=Math.round(ra+(rb-ra)*((k+0.5)/Math.max(nL,1)));
+      var tn=vTn(pts,idx);
+      var side=k%2===0?1:-1;
+      drawLeaf(ctx,tn[0],tn[1],Math.max(4,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc),(tn[2]-side*Math.PI/2)*0.86,L/10,c.leaf,c.leafLight);
+    }
+    if(c.tendril>=1&&nL>=3){var tn1=vTn(pts,Math.round(ra+(rb-ra)*0.5));drawTendril(ctx,tn1[0],tn1[1],6.5*sc*3,1.5,Math.PI*0.5,c.leaf);}
+    if(c.tendril>=2){var tn2=vTn(pts,Math.round(ra+(rb-ra)*0.74));drawTendril(ctx,tn2[0],tn2[1],6.5*sc*3,-1.5,-Math.PI*0.5,c.leaf);}
+    if(c.flower>0){
+      _VFA.slice(0,c.flowerCount).forEach(function(an){
+        var tn=vTn(pts,Math.round(ra+(rb-ra)*an.u));
+        var perp=tn[2]-an.side*Math.PI/2;
+        var ox=tn[0]+Math.cos(perp)*7*sc,oy=tn[1]+Math.sin(perp)*7*sc;
+        if(c.flower>=2)drawCherryBlossom(ctx,ox,oy,(c.flower>=3?8:6)*sc,perp);
+        else drawFlower(ctx,ox,oy,5*sc);
+      });
     }
   }
 
+  // Bridge from history panel to first column
+  var histTip=window.historyVineTip;
+  var histPanel=document.querySelector('.hist-panel');
+  if(histPanel&&N>0){
+    var bSX=histPanel.getBoundingClientRect().right-canvasRect.left;
+    var bSY=histTip?(histTip.pageY-canvasRect.top):pts[0][1];
+    var c0L=colData[0].dayISO>TODAY_ISO?0:getDayVineLevel(colData[0].dayISO);
+    ctx.strokeStyle=_VCFG[c0L].stick;ctx.lineWidth=1.8+c0L*0.28;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(bSX,bSY);
+    ctx.bezierCurveTo(bSX+(pts[0][0]-bSX)*0.4,bSY,bSX+(pts[0][0]-bSX)*0.6,pts[0][1],pts[0][0],pts[0][1]);
+    ctx.stroke();
+  }
+
+  // Breeze and particles
+  if(S.momentum>=5&&Math.random()<0.05&&N>0){
+    var ri=Math.floor(Math.random()*N);
+    breeze.spawn(pts[ri][0],pts[ri][1]);
+  }
   breeze.update(ctx,S.momentum);
   particles=particles.filter(function(p){
-    p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.alpha-=0.022;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.06;p.alpha-=0.022;
     if(p.alpha<=0) return false;
-    ctx.globalAlpha=p.alpha; ctx.fillStyle=p.col;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=p.alpha;ctx.fillStyle=p.col;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
     return true;
   });
   ctx.globalAlpha=1;
   drawAnims(ctx);
 
-  // Highlight selected task chain: tinted rect over each matched column vine
+  // Highlight selected task chain
   if(selectedTaskId){
     var hlChain=getSelectedChain();
     if(hlChain&&hlChain.length){
-      colData.forEach(function(cd){
-        if(hlChain.indexOf(cd.dayISO)<0) return;
-        var x=cd.bodyRect.left-canvasRect.left;
-        var w=cd.bodyRect.width;
-        ctx.save();
-        ctx.fillStyle='rgba(255,180,40,0.2)';
-        ctx.fillRect(x+2,VINE_BASELINE_Y-50,w-4,80);
+      colData.forEach(function(cd,ci){
+        if(hlChain.indexOf(cd.dayISO)<0||!dayRanges[ci]) return;
+        var ra=dayRanges[ci][0],rb=dayRanges[ci][1];
+        ctx.save();ctx.fillStyle='rgba(255,180,40,0.15)';
+        ctx.fillRect(pts[ra][0],pts[ra][1]-28,pts[rb][0]-pts[ra][0],56);
         ctx.restore();
       });
     }
