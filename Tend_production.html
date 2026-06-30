@@ -2198,26 +2198,29 @@ function drawTaperedStem(ctx,pts,baseW,tipW,col1,col2){
 }
 
 // ── 3-lobe ivy leaf with veins ──
-function drawLeaf(ctx,x,y,size,angle,ageNorm,fillColor,lightColor){
+function drawLeaf(ctx,x,y,L,angle,ageNorm,fillColor,lightColor){
+  // README spec: almond shape pointing +x, rotated by angle = tangentAngle + side*1.32
+  var W=L*0.6;
   ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
-  var h=size;
+  // Main body
   ctx.fillStyle=fillColor||('hsl('+(100-ageNorm*15)+','+(65-ageNorm*20)+'%,'+(42+ageNorm*8)+'%)');
-  ctx.beginPath(); ctx.moveTo(0,0);
-  ctx.bezierCurveTo(-h*0.28,-h*0.45,-h*0.32,-h*0.88,0,-h);
-  ctx.bezierCurveTo(h*0.32,-h*0.88,h*0.28,-h*0.45,0,0); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(0,-h*0.32);
-  ctx.bezierCurveTo(-h*0.25,-h*0.52,-h*0.62,-h*0.28,-h*0.42,-h*0.08);
-  ctx.bezierCurveTo(-h*0.22,h*0.02,-h*0.08,-h*0.18,0,-h*0.32); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(0,-h*0.32);
-  ctx.bezierCurveTo(h*0.25,-h*0.52,h*0.62,-h*0.28,h*0.42,-h*0.08);
-  ctx.bezierCurveTo(h*0.22,h*0.02,h*0.08,-h*0.18,0,-h*0.32); ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=0.55; ctx.lineCap='round';
   ctx.beginPath();
-  ctx.moveTo(0,0); ctx.lineTo(0,-h*0.88);
-  ctx.moveTo(0,-h*0.3); ctx.lineTo(-h*0.32,-h*0.52);
-  ctx.moveTo(0,-h*0.3); ctx.lineTo(h*0.32,-h*0.52);
-  ctx.moveTo(0,-h*0.6); ctx.lineTo(-h*0.22,-h*0.75);
-  ctx.moveTo(0,-h*0.6); ctx.lineTo(h*0.22,-h*0.75);
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo(0.2*L,-W, 0.62*L,-0.95*W, L,-0.08*W);
+  ctx.bezierCurveTo(0.66*L,0.3*W, 0.28*L,0.5*W, 0,0);
+  ctx.closePath(); ctx.fill();
+  // Highlight lobe
+  ctx.save(); ctx.globalAlpha=0.5;
+  ctx.fillStyle=lightColor||'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.moveTo(0.08*L,0.04*W);
+  ctx.bezierCurveTo(0.22*L,-0.52*W, 0.58*L,-0.82*W, L*0.82,-0.04*W);
+  ctx.bezierCurveTo(0.62*L,0.22*W, 0.3*L,0.38*W, 0.08*L,0.04*W);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+  // Vein
+  ctx.strokeStyle='rgba(40,55,25,0.28)'; ctx.lineWidth=0.8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(2,0);
+  ctx.quadraticCurveTo(0.5*L,-0.25*W, 0.95*L,-0.05*W);
   ctx.stroke();
   ctx.restore();
 }
@@ -2379,7 +2382,7 @@ function drawVine(ctx,W,H,level,seed){
   ctx.restore();
   _VLA.slice(0,c.leaves).forEach(function(an){
     var tn=vTn(pts,Math.round(an.u*(N-1)));
-    var angle=(tn[2]-an.side*Math.PI/2)*0.86;
+    var angle=tn[2]+an.side*1.32;
     var ls=Math.max(4,24*c.leafScale*an.s*sc);
     drawLeaf(ctx,tn[0],tn[1],ls,angle,level/10,c.leaf,c.leafLight);
   });
@@ -2564,35 +2567,66 @@ function drawHistVine(){
   var dates=getHistoryDates();
   window.vineHitPath=[];
 
-  // Oldest at top, newest at bottom — descending vertical ribbon
-  var allDays=dates.slice(-20);
+  // Oldest at top, newest at bottom.
+  // Last segment always ends on the right edge (LTR) so the bridge to day columns is natural.
+  var allDays=dates.slice(-28);
   if(!allDays.length){
-    window.historyVineTip={pageY:cv.getBoundingClientRect().top+H*0.85};
+    window.historyVineTip={pageY:cv.getBoundingClientRect().top+H*0.9,pageX:cv.getBoundingClientRect().left+W,tangentX:1,tangentY:0};
     return;
   }
   var n=allDays.length;
-  var xC=W*0.52;
-  var yTop=10, yBot=H-10;
-  var segH=(yBot-yTop)/n;
-  var SPD=14;
+  var mg=10;
+  var yTop=12, yBot=H*0.90;
+  var rowH=(yBot-yTop)/n;
+  var diagDX=W-2*mg, diagDY=rowH;
+  var diagLen=Math.hypot(diagDX,diagDY);
+  var pull=Math.min(rowH*0.45,16);
+  var SPD=14, TARC=12;
 
-  // Build continuous path: each day has its own gentle x-wobble
-  // sin(0)=sin(k*pi)=0 guarantees smooth connection between segments
+  function segLTR(i){ return (n-1-i)%2===0; }
+
   var pts=[],owner=[];
   for(var i=0;i<n;i++){
     var iso=allDays[i];
+    var ltr=segLTR(i);
+    var cx0=ltr?mg:W-mg, cy0=yTop+i*rowH;
+    var cx1=ltr?W-mg:mg,  cy1=yTop+(i+1)*rowH;
+    var ux=(cx1-cx0)/diagLen, uy=diagDY/diagLen;
+    var sx=cx0+ux*pull, sy=cy0+uy*pull;
+    var ex=cx1-ux*pull, ey=cy1-uy*pull;
+
     var ds=parseInt(iso.replace(/-/g,''),10)*0.0001;
     var k=1+Math.floor(vSd(ds*3+1)*3);
-    var wob=W*0.2;
-    var amp=wob*(0.4+vSd(ds*3+2)*0.8);
+    var wob=diagLen*0.04;
+    var amp=wob*(0.4+vSd(ds*3+2)*0.7);
     var bow=vSd(ds*3+3)<0.5?1:-1;
-    var startS=(i===0)?0:1;
-    for(var s=startS;s<=SPD;s++){
+    var px=-uy, py=ux; // perpendicular to segment direction
+
+    for(var s=0;s<=SPD;s++){
       var fr=s/SPD;
-      var y=yTop+i*segH+fr*segH;
-      var x=xC+bow*amp*Math.sin(fr*Math.PI*k);
-      pts.push([x,y]);
+      var bx=sx+fr*(ex-sx), by=sy+fr*(ey-sy);
+      var wave=bow*amp*Math.sin(fr*Math.PI*k);
+      pts.push([bx+px*wave, by+py*wave]);
       owner.push(i);
+    }
+
+    if(i<n-1){
+      var next_ltr=segLTR(i+1);
+      var ncx0=next_ltr?mg:W-mg, ncy0=yTop+(i+1)*rowH;
+      var ncx1=next_ltr?W-mg:mg, ncy1=yTop+(i+2)*rowH;
+      var nux=(ncx1-ncx0)/diagLen, nuy=diagDY/diagLen;
+      var nsx=ncx0+nux*pull, nsy=ncy0+nuy*pull;
+      var maxCtrl=mg/Math.abs(ux)+pull;
+      var ctrlLen=maxCtrl*0.85;
+      var cp1x=ex+ux*ctrlLen, cp1y=ey+uy*ctrlLen;
+      var cp2x=nsx-nux*ctrlLen, cp2y=nsy-nuy*ctrlLen;
+      for(var s=1;s<=TARC;s++){
+        var t=s/TARC, u=1-t;
+        var bx=u*u*u*ex+3*u*u*t*cp1x+3*u*t*t*cp2x+t*t*t*nsx;
+        var by=u*u*u*ey+3*u*u*t*cp1y+3*u*t*t*cp2y+t*t*t*nsy;
+        pts.push([bx,by]);
+        owner.push(i);
+      }
     }
   }
 
@@ -2631,31 +2665,36 @@ function drawHistVine(){
   ctx.stroke();
   ctx.restore();
 
-  // Per-day decorations and hit-path
-  var dayRanges={};
-  for(var i=0;i<N;i++){var d=owner[i];if(!dayRanges[d])dayRanges[d]=[i,i];else dayRanges[d][1]=i;}
+  // Per-segment index ranges (only the segment points, not the U-turn arc points)
+  var segStart=[]; // starting index in pts[] for each day's segment
+  var ptr=0;
+  for(var d=0;d<n;d++){
+    segStart.push(ptr);
+    ptr+=SPD+1;
+    if(d<n-1) ptr+=TARC;
+  }
+
   var histArcs=[];
   for(var d=0;d<n;d++){
     var iso=allDays[d];
     var L=getDayVineLevel(iso);
-    if(!dayRanges[d]) continue;
-    var c=_VCFG[L],ra=dayRanges[d][0],rb=dayRanges[d][1];
+    var c=_VCFG[L];
+    var ra=segStart[d], rb=ra+SPD;
     var sc=W/160;
     var nL=Math.min(c.leaves,4);
     for(var k=0;k<nL;k++){
-      var idx=Math.round(ra+(rb-ra)*((k+0.5)/Math.max(nL,1)));
+      var idx=ra+Math.round(k*(SPD/Math.max(nL-1,1)));
+      idx=Math.min(idx,rb);
       var tn=vTn(pts,idx);
       var side=k%2===0?1:-1;
-      var angle=(tn[2]-side*Math.PI/2)*0.86;
-      var ls=Math.max(3,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc);
-      drawLeaf(ctx,tn[0],tn[1],ls,angle,L/10,c.leaf,c.leafLight);
+      drawLeaf(ctx,tn[0],tn[1],Math.max(3,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc),tn[2]+side*1.32,L/10,c.leaf,c.leafLight);
     }
     if(c.tendril>=1&&nL>=3){
-      var tn1=vTn(pts,Math.round(ra+(rb-ra)*0.5));
+      var tn1=vTn(pts,ra+Math.round(SPD*0.5));
       drawTendril(ctx,tn1[0],tn1[1],6.5*sc*2,1.5,tn1[2]+Math.PI*0.5,c.leaf);
     }
     if(c.flower>0){
-      var tn2=vTn(pts,Math.round(ra+(rb-ra)*0.65));
+      var tn2=vTn(pts,ra+Math.round(SPD*0.65));
       var perp=tn2[2]-Math.PI/2;
       var ox=tn2[0]+Math.cos(perp)*6*sc,oy=tn2[1]+Math.sin(perp)*6*sc;
       if(c.flower>=2)drawCherryBlossom(ctx,ox,oy,(c.flower>=3?8:6)*sc,perp);
@@ -2663,12 +2702,11 @@ function drawHistVine(){
     }
     histArcs.push({date:iso,ra:ra,rb:rb});
     for(var s=0;s<5;s++){
-      var idx=Math.round(ra+(rb-ra)*s/4);
+      var idx=ra+Math.round(SPD*s/4);
       window.vineHitPath.push({x:pts[idx][0],y:pts[idx][1],date:iso,momentum:L});
     }
   }
 
-  // Highlight selected task chain
   if(selectedTaskId){
     var hlChainH=getSelectedChain();
     if(hlChainH&&hlChainH.length){
@@ -2683,9 +2721,16 @@ function drawHistVine(){
     }
   }
 
-  // Connection point for drawDayVine bridge
+  // The last segment always exits rightward (LTR), so force tangent (1,0)
+  // to avoid the sine wave's non-zero slope at the endpoint causing a loop in the bridge.
   var tipPt=pts[N-1];
-  window.historyVineTip={pageY:cv.getBoundingClientRect().top+tipPt[1]};
+  var cvRect=cv.getBoundingClientRect();
+  window.historyVineTip={
+    pageY:cvRect.top+tipPt[1],
+    pageX:cvRect.left+tipPt[0],
+    tangentX:1,
+    tangentY:0
+  };
 }
 
 // Change 5: History vine tooltip listeners (set up once after drawHistVine is defined)
@@ -2764,12 +2809,13 @@ function drawDayVine(t){
   // Each day segment occupies its column's width; gentle y-wobble returns to
   // baseline at endpoints (sin(0)=sin(k·π)=0) so segments connect smoothly.
   var vineH=140, SPD=16;
+  var tipPageY=window.historyVineTip?window.historyVineTip.pageY:null;
   var pts=[],owner=[];
   colData.forEach(function(cd,ci){
     var bR=cd.bodyRect;
     var cL=bR.left-canvasRect.left, cR=bR.right-canvasRect.left;
     var cW=cR-cL;
-    var segY=(bR.bottom-canvasRect.top)-vineH/2;
+    var segY=tipPageY!==null?(tipPageY-canvasRect.top):(bR.bottom-canvasRect.top)-vineH/2;
     var ds=parseInt(cd.dayISO.replace(/-/g,''),10)*0.0001;
     var k=1+Math.floor(vSd(ds*3+1)*3);
     var wob=vineH*0.05;
@@ -2832,7 +2878,7 @@ function drawDayVine(t){
       var idx=Math.round(ra+(rb-ra)*((k+0.5)/Math.max(nL,1)));
       var tn=vTn(pts,idx);
       var side=k%2===0?1:-1;
-      drawLeaf(ctx,tn[0],tn[1],Math.max(4,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc),(tn[2]-side*Math.PI/2)*0.86,L/10,c.leaf,c.leafLight);
+      drawLeaf(ctx,tn[0],tn[1],Math.max(4,24*c.leafScale*(k<_VLA.length?_VLA[k].s:1)*sc),tn[2]+side*1.32,L/10,c.leaf,c.leafLight);
     }
     if(c.tendril>=1&&nL>=3){var tn1=vTn(pts,Math.round(ra+(rb-ra)*0.5));drawTendril(ctx,tn1[0],tn1[1],6.5*sc*3,1.5,Math.PI*0.5,c.leaf);}
     if(c.tendril>=2){var tn2=vTn(pts,Math.round(ra+(rb-ra)*0.74));drawTendril(ctx,tn2[0],tn2[1],6.5*sc*3,-1.5,-Math.PI*0.5,c.leaf);}
@@ -2847,16 +2893,22 @@ function drawDayVine(t){
     }
   }
 
-  // Bridge from history panel to first column
+  // Bridge from history panel tip to first day column — tangent-matched bezier
   var histTip=window.historyVineTip;
   var histPanel=document.querySelector('.hist-panel');
-  if(histPanel&&N>0){
-    var bSX=histPanel.getBoundingClientRect().right-canvasRect.left;
-    var bSY=histTip?(histTip.pageY-canvasRect.top):pts[0][1];
+  if(histPanel&&N>0&&histTip){
+    var bSX=histTip.pageX-canvasRect.left;
+    var bSY=histTip.pageY-canvasRect.top;
+    var bEX=pts[0][0], bEY=pts[0][1];
+    var tdx=histTip.tangentX||1, tdy=histTip.tangentY||0;
+    var dist=Math.hypot(bEX-bSX,bEY-bSY);
+    var ctrlLen=Math.max(30,dist*0.38);
+    var cp1x=bSX+tdx*ctrlLen, cp1y=bSY+tdy*ctrlLen;
+    var cp2x=bEX-ctrlLen,     cp2y=bEY;
     var c0L=colData[0].dayISO>TODAY_ISO?0:getDayVineLevel(colData[0].dayISO);
     ctx.strokeStyle=_VCFG[c0L].stick;ctx.lineWidth=1.8+c0L*0.28;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(bSX,bSY);
-    ctx.bezierCurveTo(bSX+(pts[0][0]-bSX)*0.4,bSY,bSX+(pts[0][0]-bSX)*0.6,pts[0][1],pts[0][0],pts[0][1]);
+    ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,bEX,bEY);
     ctx.stroke();
   }
 

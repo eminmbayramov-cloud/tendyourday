@@ -1,4 +1,4 @@
-const CACHE = 'tend-v2';
+const CACHE = 'tend-v7';
 const PRECACHE = [
   '/',
   '/Tend_production.html',
